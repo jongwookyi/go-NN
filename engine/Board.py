@@ -23,6 +23,10 @@ class Board:
         self.vertices = np.empty((self.N, self.N), dtype=np.int32)
         self.vertices.fill(Stone.Empty)
         self.history = []
+        self.move_list = []
+
+    def __getitem__(self, index):
+        return self.vertices[index]
 
     def is_on_board(self, x, y):
         return x >= 0 and x < self.N and y >= 0 and y < self.N
@@ -72,13 +76,20 @@ class Board:
 
         if not just_testing:
             self.history.append(np.copy(self.vertices))
+            self.move_list.append((x,y))
 
         return made_a_capture or self.check_group_liberties(x, y)
 
-    def play_is_legal(self, x, y, stone):
-        saved_vertices = np.copy(self.vertices)
-        legal = self.play_stone(x, y, stone, just_testing=True)
+    def save(self):
+        self.saved_vertices = np.copy(self.vertices)
+
+    def restore(self):
         self.vertices = saved_vertices
+
+    def play_is_legal(self, x, y, stone):
+        self.save()
+        legal = self.play_stone(x, y, stone, just_testing=True)
+        self.restore()
         return legal
 
     def flip_colors(self):
