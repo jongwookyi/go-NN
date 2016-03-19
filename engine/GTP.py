@@ -94,7 +94,7 @@ class GTP:
     def loop(self):
         while True:
             line = sys.stdin.readline().strip()
-            print "Client sent: " + line
+            print "GTP: client sent: " + line
     
             if line.startswith("protocol_version"): # GTP protocol version
                 self.tell_client("2")
@@ -117,6 +117,6 @@ class GTP:
             elif line.startswith("genmove"): # We must generate a move
                 self.generate_move(line)
             else:
-                self.error_client("Don't recognized that command")
+                self.error_client("Don't recognize that command")
 
 
