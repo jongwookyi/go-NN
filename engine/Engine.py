@@ -30,6 +30,7 @@ class BaseEngine(object):
 
     def stone_played(self, x, y, color):
         assert self.board.play_stone(x, y, color)
+        self.board.show()
 
     # subclasses must override this
     def pick_move(self, color):
@@ -40,6 +41,7 @@ class BaseEngine(object):
         if coords:
             x,y = coords
             assert self.board.play_stone(x, y, color)
+        self.board.show()
         return coords
 
     def quit(self):

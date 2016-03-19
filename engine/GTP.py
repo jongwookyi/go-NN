@@ -23,8 +23,8 @@ class GTP:
     def __init__(self, engine, logfile):
         self.engine = engine
         self.fclient = sys.stdout
-        sys.stdout = open(logfile, 'w')
-        print "GTP: Redirected stdout to logfile."
+        sys.stdout = sys.stderr = open(logfile, 'w', 0) # 0 = unbuffered
+        print "GTP: Redirected stdout and stderr to logfile."
 
     def tell_client(self, s):
         self.fclient.write('= ' + s + '\n\n')
@@ -70,9 +70,9 @@ class GTP:
     def stone_played(self, line):
         parts = line.split()
         color = color_from_str(parts[1])
-        if "pass" in parts[2]:
+        if "pass" in parts[2].lower():
             print "GTP: %s passed" % color_names[color]
-            self.engine.player_passed(stone)
+            self.engine.player_passed(color)
         else:
             x,y = coords_from_str(parts[2])
             print "GTP: %s played at (%d,%d)" % (color_names[color], x, y)

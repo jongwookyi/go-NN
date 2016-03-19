@@ -38,6 +38,7 @@ class Board:
         visited = np.zeros((self.N, self.N), dtype=np.bool_) 
         visited[start_x, start_y] = True
         group_color = self.vertices[start_x, start_y]
+        assert group_color != Stone.Empty
 
         i = 0
         while i < len(group_xys):
@@ -68,19 +69,25 @@ class Board:
         for dx,dy in dxdys:
             adj_x, adj_y = x+dx, y+dy
             if self.is_on_board(adj_x, adj_y):
-                if not self.check_group_liberties(adj_x, adj_y, capture=True):
-                    made_a_capture = True
+                if self.vertices[adj_x, adj_y] == flipped_stone(stone):
+                    if not self.check_group_liberties(adj_x, adj_y, capture=True):
+                        made_a_capture = True
 
         # check if the new board state repeats a previous state, which is illegal
         for prev_vertices in self.history:
             if np.array_equal(prev_vertices, self.vertices):
                 return False
 
+        # check for self-capture
+        if not made_a_capture:
+            if not self.check_group_liberties(x, y):
+                return False
+
         if not just_testing:
             self.history.append(np.copy(self.vertices))
             self.move_list.append((x,y))
 
-        return made_a_capture or self.check_group_liberties(x, y)
+        return True
 
     def save(self):
         self.saved_vertices = np.copy(self.vertices)
@@ -108,7 +115,7 @@ class Board:
         print
         for y in range(self.N):
             for x in range(self.N):
-                print stone_strings[self.vertices[x,y]],
+                print stone_strings[self.vertices[x,self.N-y-1]],
             print
         for x in range(self.N): print "=",
         print
@@ -146,6 +153,10 @@ def test_Board():
     print "self capture:"
     show_sequence(board, [(0, 1), (1, 1), (1, 0)], Stone.Black)
     print "move at (0, 0) is legal?", board.play_is_legal(0, 0, Stone.White)
+
+    print "biffer self capture:"
+    show_sequence(board, [(1, 0), (0, 0), (1, 1), (0, 1), (1, 2), (0, 2), (1, 3), (0, 3), (1, 4)], Stone.Black)
+    print "move at (0, 4) is legal?", board.play_is_legal(0, 0, Stone.White)
 
 
 
