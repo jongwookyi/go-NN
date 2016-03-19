@@ -7,6 +7,8 @@ class Stone:
     Black = 1
     White = 2
 
+color_names = { Stone.Empty:"Empty", Stone.Black:"Black", Stone.White:"White", }
+
 def flipped_stone(stone):
     if stone == Stone.Empty: return Stone.Empty
     elif stone == Stone.Black: return Stone.White
@@ -84,7 +86,7 @@ class Board:
         self.saved_vertices = np.copy(self.vertices)
 
     def restore(self):
-        self.vertices = saved_vertices
+        self.vertices = self.saved_vertices
 
     def play_is_legal(self, x, y, stone):
         self.save()
