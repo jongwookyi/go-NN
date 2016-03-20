@@ -20,11 +20,9 @@ def str_from_coords(x, y):
     return chr(ord('A')+x) + str(y+1)
 
 class GTP:
-    def __init__(self, engine, logfile):
+    def __init__(self, engine, fclient):
         self.engine = engine
-        self.fclient = sys.stdout
-        sys.stdout = sys.stderr = open(logfile, 'w', 0) # 0 = unbuffered
-        print "GTP: Redirected stdout and stderr to logfile."
+        self.fclient = fclient
 
     def tell_client(self, s):
         self.fclient.write('= ' + s + '\n\n')
@@ -92,8 +90,8 @@ class GTP:
             self.tell_client("pass")
 
     def loop(self):
-        while True:
-            line = sys.stdin.readline().strip()
+        for line in sys.stdin:
+            line = line.strip()
             print "GTP: client sent: " + line
     
             if line.startswith("protocol_version"): # GTP protocol version

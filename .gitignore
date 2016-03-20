@@ -1,6 +1,9 @@
 *.pyc
 *.sgf
 *.tar.bz2
+*.npz
 data/KGS/downloads/
 data/KGS/SGFs/
 log*.txt
+engine/logs/*
+engine/checkpoints/*

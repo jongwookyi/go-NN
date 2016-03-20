@@ -1,0 +1,9 @@
+protocol_version
+name
+version
+boardsize 19
+clear_board
+play b D4
+genmove w
+play b F8
+genmove w

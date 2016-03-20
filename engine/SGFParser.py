@@ -22,6 +22,8 @@ def parse_property_name(file_data, ptr):
     return (name, ptr)
 
 def parse_property_data(file_data, ptr):
+    while file_data[ptr].isspace(): 
+        ptr += 1
     if file_data[ptr] != '[':
         return (None, ptr)
     ptr += 1
@@ -46,7 +48,7 @@ def parse_SGF(filename, processor):
     with open(filename, 'r') as f:
         file_data = f.read()
 
-    processor.begin()
+    processor.begin_game()
         
     state = READING_NAME
 
@@ -58,7 +60,7 @@ def parse_SGF(filename, processor):
     while True:
         (property_name, ptr) = parse_property_name(file_data, ptr)
         if property_name == None:
-            processor.end()
+            processor.end_game()
             return
         elif property_name in properties_taking_lists:
             (property_data, ptr) = parse_property_data_list(file_data, ptr)
@@ -68,10 +70,10 @@ def parse_SGF(filename, processor):
 
 
 class DebugProcessor:
-    def begin(self):
+    def begin_game(self):
         print "DebugProcessor: begin!"
 
-    def end(self):
+    def end_game(self):
         print "DebugProcessor: end!"
 
     def process(self, property_name, property_data):
@@ -89,17 +91,17 @@ class PlayingProcessor:
     def __init__(self, N):
         self.board = Board(N)
 
-    def begin(self):
+    def begin_game(self):
         self.board.clear()
 
-    def end(self):
+    def end_game(self):
         pass
 
     def play_stone(self, stone, vertex_str):
         vertex = parse_vertex(vertex_str)
         if vertex: # if not pass
             x, y = vertex
-            assert self.board.play_stone(x, y, stone) # fails on illegal move
+            assert self.board.play_stone(x, y, stone)
 
     def process(self, property_name, property_data):
         if property_name == "B": # black plays
@@ -119,19 +121,23 @@ class PrintingProcessor:
     def __init__(self, N):
         self.player = PlayingProcessor(N)
 
-    def begin(self):
+    def begin_game(self):
         print "PrintingProcessor: Game start!"
-        self.player.begin()
+        self.player.begin_game()
+        self.move_number = 0
 
-    def end(self):
+    def end_game(self):
         print "PrintingProcessor: Game end!"
-        self.player.end()
+        self.player.end_game()
 
     properties_causing_prints = set(["B", "W", "AB", "AW"])
 
     def process(self, property_name, property_data):
         print "PrintingProcessor: %s = " % property_name, property_data
         self.player.process(property_name, property_data)
+        if property_name == "W" or property_name == "B":
+            self.move_number += 1
+            print "Move %d played" % self.move_number
         if property_name in PrintingProcessor.properties_causing_prints:
             print "PrintingProcessor: Now the position is"
             self.player.board.show()
@@ -143,12 +149,18 @@ def test_DebugProcessor():
     parse_SGF("../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf", processor)
 
 def test_PrintingProcessor():
-    processor = PrintingProcessor(19)
+    #processor = PrintingProcessor(19)
     #parse_SGF("../data/KGS/SGFs/kgs-19-2008-10-new/2008-10-12-5.sgf", processor)
-    parse_SGF("../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf", processor)
+    #parse_SGF("../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf", processor)
+    #parse_SGF("/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-01-17.sgf", processor)
+    #parse_SGF("/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-15-4.sgf", processor)
+    processor = PrintingProcessor(9)
+    parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2285.sgf", processor)
+    parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2412.sgf", processor)
 
-#test_DebugProcessor()
-#test_PrintingProcessor()
+if __name__ == "__main__":
+    #test_DebugProcessor()
+    test_PrintingProcessor()
 
 
 

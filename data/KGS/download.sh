@@ -20,3 +20,6 @@ cd SGFs
 for archive in ../downloads/*.tar.bz2 ; do
     tar xjf "$archive"
 done
+
+echo "Done!"
+

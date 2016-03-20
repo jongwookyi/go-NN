@@ -24,7 +24,8 @@ class Board:
     def clear(self):
         self.vertices = np.empty((self.N, self.N), dtype=np.int32)
         self.vertices.fill(Stone.Empty)
-        self.history = []
+        self.prev_vertices = np.full_like(self.vertices, Stone.Empty)
+        self.prev_prev_vertices = np.full_like(self.vertices, Stone.Empty)
         self.move_list = []
 
     def __getitem__(self, index):
@@ -61,7 +62,8 @@ class Board:
 
 
     # returns whether the move was legal
-    def play_stone(self, x, y, stone, just_testing=False):
+    def play_stone(self, x, y, stone, just_testing=False, check_legality=True):
+        assert stone == Stone.White or stone == Stone.Black
         if self.vertices[x, y] != Stone.Empty: return False
         self.vertices[x, y] = stone
 
@@ -74,17 +76,19 @@ class Board:
                         made_a_capture = True
 
         # check if the new board state repeats a previous state, which is illegal
-        for prev_vertices in self.history:
-            if np.array_equal(prev_vertices, self.vertices):
+        if check_legality:
+            # check for simple ko. KGS games seem to allow superko
+            if np.array_equal(self.prev_prev_vertices, self.vertices):
                 return False
 
-        # check for self-capture
-        if not made_a_capture:
-            if not self.check_group_liberties(x, y):
-                return False
+            # check for self-capture
+            if not made_a_capture:
+                if not self.check_group_liberties(x, y):
+                    return False
 
         if not just_testing:
-            self.history.append(np.copy(self.vertices))
+            np.copyto(self.prev_prev_vertices, self.prev_vertices)
+            np.copyto(self.prev_vertices, self.vertices)
             self.move_list.append((x,y))
 
         return True
@@ -115,7 +119,7 @@ class Board:
         print
         for y in range(self.N):
             for x in range(self.N):
-                print stone_strings[self.vertices[x,self.N-y-1]],
+                print stone_strings[self.vertices[x,y]],
             print
         for x in range(self.N): print "=",
         print
@@ -160,5 +164,5 @@ def test_Board():
 
 
 
-
-#test_Board()
+if __name__ == "__main__":
+    test_Board()

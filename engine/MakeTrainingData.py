@@ -3,14 +3,17 @@
 import numpy as np
 import struct
 import sys
+import os
+import os.path
 
 from SGFParser import *
 from Board import *
 
 def make_stone_plane(array, board, stone):
-    for x in xrange(board.N):
-        for y in xrange(board.N):
-            if board[x,y] == stone: array[x,y] = 1
+    #for x in xrange(board.N):
+    #    for y in xrange(board.N):
+    #        if board[x,y] == stone: array[x,y] = 1
+    np.copyto(array, np.equal(board.vertices, stone))
 
 def make_ones_plane(array, board):
     np.copyto(array, np.ones((board.N, board.N)))
@@ -145,10 +148,8 @@ def make_feature_planes(board, play_color):
     #make_legality_plane(feature_planes[:,:,44], board, play_color)
     return feature_planes
 
-def make_move_plane(board, x, y):
-    plane = np.zeros((board.N, board.N), dtype=np.int8)
-    plane[x,y] = 1
-    return plane
+def make_move_arr(x, y):
+    return np.array([x,y], dtype=np.int8)
 
 def show_plane(array):
     assert len(array.shape) == 2
@@ -156,7 +157,7 @@ def show_plane(array):
     print "=" * N
     for y in xrange(N):
         for x in xrange(N):
-            sys.stdout.write('1' if array[x,N-y-1]==1 else '0')
+            sys.stdout.write('1' if array[x,y]==1 else '0')
         sys.stdout.write('\n')
     print "=" * array.shape[1]
 
@@ -166,12 +167,18 @@ def show_all_planes(array):
         print "PLANE %d:" % i
         show_plane(array[:,:,i])
 
-def show_features_and_move_planes(feature_planes, move_plane):
+def show_feature_planes_and_move(feature_planes, move):
     print "FEATURE PLANES:"
     show_all_planes(feature_planes)
-    print "MOVE PLANE:"
-    show_plane(move_plane)
+    print "MOVE:"
+    print move
 
+def show_batch(all_feature_planes, all_moves):
+    batch_size = all_feature_planes.shape[0]
+    print "MINIBATCH OF SIZE", batch_size
+    for i in xrange(batch_size):
+        print "EXAMPLE", i
+        show_feature_planes_and_move(all_feature_planes[i,:,:,:], all_moves[i,:])
 
 def test_feature_planes():
     board = Board(5)
@@ -180,25 +187,24 @@ def test_feature_planes():
     for x,y in moves:
         board.show()
         feature_planes = make_feature_planes(board, play_color)
-        move_plane = make_move_plane(board, x, y)
-        show_features_and_move_planes(feature_planes, move_plane)
+        move_arr = make_move_arr(x, y)
+        show_feature_planes_and_move(feature_planes, move_arr)
         print
         board.play_stone(x, y, play_color)
         play_color = flipped_stone(play_color)
 
-
-
-def write_minibatch(filename, all_feature_planes, all_move_planes):
+def write_minibatch(filename, all_feature_planes, all_moves):
     assert all_feature_planes.dtype == np.int8
-    assert all_move_planes.dtype == np.int8
+    assert all_moves.dtype == np.int8
     assert len(all_feature_planes.shape) == 4
-    assert len(all_move_planes.shape) == 3
-    assert all_feature_planes.shape[0] == all_move_planes.shape[0]
-    np.savez_compressed(filename, feature_planes=all_feature_planes, move_planes=all_move_planes)
+    assert len(all_moves.shape) == 2
+    assert all_feature_planes.shape[0] == all_moves.shape[0]
+    print "writing %s" % filename
+    np.savez_compressed(filename, feature_planes=all_feature_planes, moves=all_moves)
 
 def read_minibatch(filename):
     npz = np.load(filename)
-    ret = (npz['feature_planes'], npz['move_planes'])
+    ret = (npz['feature_planes'], npz['moves'])
     npz.close()
     return ret
 
@@ -209,35 +215,44 @@ def test_minibatch_read_write():
     minibatch_size = len(moves)
     num_feature_planes = 3
     all_feature_planes = np.zeros((minibatch_size, N, N, num_feature_planes), dtype=np.int8)
-    all_move_planes = np.zeros((minibatch_size, N, N), dtype=np.int8)
+    all_moves = np.zeros((minibatch_size, 2), dtype=np.int8)
     play_color = Stone.Black
     for i in xrange(minibatch_size):
         print "out example %d" % i
         x,y = moves[i]
         board.show()
         all_feature_planes[i,:,:,:] = make_feature_planes(board, play_color)
-        all_move_planes[i,:,:] = make_move_plane(board, x, y)
-        show_features_and_move_planes(all_feature_planes[i,:,:,:], all_move_planes[i,:,:])
+        all_moves[i,:] = make_move_arr(x, y)
+        show_feature_planes_and_move(all_feature_planes[i,:,:,:], all_moves[i,:])
         print
         board.play_stone(x, y, play_color)
         play_color = flipped_stone(play_color)
 
     filename = "/tmp/test_minibatch.npz"
     print "writing minibatch..."
-    write_minibatch(filename, all_feature_planes, all_move_planes)
+    write_minibatch(filename, all_feature_planes, all_moves)
     print "reading minibatch..."
-    write_minibatch(filename, all_feature_planes, all_move_planes)
-    (in_feature_planes, in_move_planes) = read_minibatch(filename)
+    write_minibatch(filename, all_feature_planes, all_moves)
+    (in_feature_planes, in_moves) = read_minibatch(filename)
 
     for i in xrange(minibatch_size):
         print "in example %d" % i
-        show_features_and_move_planes(in_feature_planes[i,:,:,:], in_move_planes[i,:,:])
+        show_feature_planes_and_move(in_feature_planes[i,:,:,:], in_moves[i,:])
+
 
 
 class TrainingDataWriter:
-    def __init__(self, N, training_data_file):
-        self.training_data_file = training_data_file
+    def __init__(self, N, out_dir, minibatch_size, num_features, rank_allowed):
+        self.out_dir = out_dir
         self.player = PlayingProcessor(N)
+        self.minibatch_features = np.empty((minibatch_size, N, N, num_features), dtype=np.int8)
+        self.minibatch_moves = np.empty((minibatch_size, 2), dtype=np.int8)
+        self.example_index = 0
+        self.minibatch_number = 0
+        self.minibatch_size = minibatch_size
+        self.num_features = num_features
+        self.rank_allowed = rank_allowed
+        #self.known_ranks = set()
 
     def __enter__(self):
         self.fout = open(self.training_data_file, 'w')
@@ -245,28 +260,117 @@ class TrainingDataWriter:
     def __exit__(self, exception_type, exception_value, traceback):
         self.fout.close()
 
-    def begin(self):
-        self.player.begin()
+    def begin_game(self):
+        self.player.begin_game()
+        self.ignore_game = False
     
-    def end(self):
-        self.player.end()
+    def end_game(self):
+        self.player.end_game()
 
     def write_move(self, play_color, move_str):
         vertex = parse_vertex(move_str)
-        if vertex:
-            x,y = vertex
-            feature_planes = make_feature_planes(self.player.board, play_color)
-            move_plane = make_move_plane(self.player.board, x, y)
-            write_image_planes(self.fout, feature_planes)
-            write_image_planes(self.fout, move_plane)
+        if not vertex: return # play passed
+        x,y = vertex
+        self.minibatch_features[self.example_index,:,:,:] = make_feature_planes(self.player.board, play_color)
+        self.minibatch_moves[self.example_index,:] = make_move_arr(x, y)
+        self.example_index += 1
+        if self.example_index == self.minibatch_size:
+            filename = "%s/train_mb%d_fe%d.%d" % (self.out_dir, self.minibatch_size, 
+                                                  self.num_features, self.minibatch_number)
+            write_minibatch(filename, self.minibatch_features, self.minibatch_moves)
+            self.example_index = 0
+            self.minibatch_number += 1
+
 
     def process(self, property_name, property_data):
+        if self.ignore_game: return
+
         if property_name == "W":
             self.write_move(Stone.White, property_data)
-        elif proprty_name == "B":
+        elif property_name == "B":
             self.write_move(Stone.Black, property_data)
+        elif property_name == "WR" or property_name == "BR":
+            #if not property_data in self.known_ranks:
+                #self.known_ranks.add(property_data)
+                #print "new rank %s, now ranks =" % property_data, self.known_ranks
+            if not self.rank_allowed(property_data): 
+                self.ignore_game = True
+                print "ignoring game because it has non-allowed rank:", property_data
 
         self.player.process(property_name, property_data)
 
-#test_feature_planes()
-test_minibatch_read_write()
+def test_TrainingDataWrite():
+    N = 19
+    sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2009-09-new/2009-09-14-52.sgf"
+    print "going to read the game at", sgf
+
+    print "let's play through the game first:"
+    parse_SGF(sgf, PrintingProcessor(N))
+
+    print "OK, now let's process it into minibatches:"
+    out_dir = "/tmp/train_data_test"
+    minibatch_size = 10
+    num_features = 3
+    writer = TrainingDataWriter(N, out_dir, minibatch_size, num_features)
+    parse_SGF(sgf, writer)
+
+    print "Now we will try to read the written minibatch files:"
+    for mbfile in os.listdir(out_dir):
+        filename = os.path.join(out_dir, mbfile)
+        print "filename =", filename
+        mb_features, mb_moves = read_minibatch(filename)
+        show_batch(mb_features, mb_moves)
+
+def make_KGS_training_data():
+    N = 19
+    minibatch_size = 8192
+    num_features = 3
+    out_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d" % (minibatch_size, num_features)
+    rank_allowed = lambda rank: rank in ['1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d',
+                                         '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p']
+    writer = TrainingDataWriter(N, out_dir, minibatch_size, num_features, rank_allowed)
+    base_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs"
+    num_games = 0
+    for period_dir in os.listdir(base_dir):
+        for sgf_file in os.listdir(os.path.join(base_dir, period_dir)):
+            filename = os.path.join(base_dir, period_dir, sgf_file)
+            parse_SGF(filename, writer)
+            num_games += 1
+            if num_games % 100 == 0: print "num_games =", num_games
+            #if num_games == 1000: return
+
+def make_CGOS9x9_training_data():
+    N = 9
+    minibatch_size = 100000
+    num_features = 3
+    out_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d" % (minibatch_size, num_features)
+    rank_allowed = lambda rank: True
+    writer = TrainingDataWriter(N, out_dir, minibatch_size, num_features, rank_allowed)
+    base_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs"
+    num_games = 0
+    for year_dir in os.listdir(base_dir):
+        for month_dir in os.listdir(os.path.join(base_dir, year_dir)):
+            for day_dir in os.listdir(os.path.join(base_dir, year_dir, month_dir)):
+                for sgf_file in os.listdir(os.path.join(base_dir, year_dir, month_dir, day_dir)):
+                    filename = os.path.join(base_dir, year_dir, month_dir, day_dir, sgf_file)
+                    parse_SGF(filename, writer)
+                    num_games += 1
+                    if num_games % 100 == 0: print "num_games =", num_games
+        
+
+if __name__ == "__main__":
+    #test_feature_planes()
+    #test_minibatch_read_write()
+    #test_TrainingDataWrite()
+    
+    #make_KGS_training_data()
+    make_CGOS9x9_training_data()
+    
+    #import cProfile
+    #cProfile.run('make_KGS_training_data()')
+
+
+
+
+
+
