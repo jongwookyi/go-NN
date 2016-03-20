@@ -10,8 +10,8 @@ from MakeTrainingData import read_minibatch
 
 N = 9 #19
 Nfeat = 3
-minibatch_size = 1024 #8192
-learning_rate = 0.3
+minibatch_size = 1000 #8192
+learning_rate = 0.0003
 max_steps = 10000000
 
 def build_feed_dict(mb_filename, feature_planes, onehot_moves):
@@ -43,29 +43,67 @@ def inference_single_conv(feature_planes):
     return logits, variables_to_restore
 
 def inference_two_convs(feature_planes):
-    print "Single convolution"
+    print "Two convolutions"
     NK = 16
     K_1 = tf.Variable(tf.truncated_normal([5, 5, Nfeat, NK], stddev=0.1))
-    conv1 = tf.nn.relu(tf.nn.conv2d(feature_planes, K_1, [1, 1, 1, 1], padding='SAME'))
+    b_1 = tf.Variable(tf.constant(0.1, shape=[NK]))
+    conv1 = tf.nn.relu(tf.nn.conv2d(feature_planes, K_1, [1, 1, 1, 1], padding='SAME') + b_1)
     K_2 = tf.Variable(tf.truncated_normal([3, 3, NK, 1], stddev=0.1))
-    conv2 = tf.nn.relu(tf.nn.conv2d(conv1, K_2, [1, 1, 1, 1], padding='SAME'))
+    b_2 = tf.Variable(tf.constant(0.1, shape=[1]))
+    conv2 = tf.nn.relu(tf.nn.conv2d(conv1, K_2, [1, 1, 1, 1], padding='SAME') + b_2)
     conv2_flat = tf.reshape(conv2, [-1, N*N])
     biases = tf.Variable(tf.constant(0, dtype=tf.float32, shape=[N*N]))
     logits = conv2_flat + biases
     variables_to_restore = [K_1, K_2, biases]
     return logits, variables_to_restore
 
+def inference_conv_conv_full(feature_planes):
+    # recommend 9x9, mbs=1000, adam, lr=0.003
+    NK = 16
+    Nhidden = 1024
+    K_1 = tf.Variable(tf.truncated_normal([5, 5, Nfeat, NK], stddev=0.1))
+    b_1 = tf.Variable(tf.constant(0.1, shape=[NK]))
+    conv1 = tf.nn.relu(tf.nn.conv2d(feature_planes, K_1, [1, 1, 1, 1], padding='SAME') + b_1)
+    K_2 = tf.Variable(tf.truncated_normal([3, 3, NK, NK], stddev=0.1))
+    b_2 = tf.Variable(tf.constant(0.1, shape=[NK]))
+    conv2 = tf.nn.relu(tf.nn.conv2d(conv1, K_2, [1, 1, 1, 1], padding='SAME') + b_2)
+    conv2_flat = tf.reshape(conv2, [-1, N*N*NK])
+    W_3 = tf.Variable(tf.truncated_normal([N*N*NK, Nhidden], stddev=0.1))
+    b_3 = tf.Variable(tf.constant(0, dtype=tf.float32, shape=[Nhidden]))
+    hidden3 = tf.nn.relu(tf.matmul(conv2_flat, W_3) + b_3)
+    W_4 = tf.Variable(tf.truncated_normal([Nhidden, N*N], stddev=0.1))
+    b_4 = tf.Variable(tf.constant(0, dtype=tf.float32, shape=[N*N]))
+    logits = tf.matmul(hidden3, W_4) + b_4
+    variables_to_restore = [K_1, b_1, K_2, b_2, W_3, b_3, W_4, b_4]
+    return logits, variables_to_restore
+
 def inference_single_full(feature_planes):
-    print "Linear model"
+    # recommend 9x9, mbs=1000, adam, lr=0.003
     Nhidden = 1024
     flat_features = tf.reshape(feature_planes, [-1, N*N*Nfeat])
-    W_1 = tf.Variable(tf.truncated_normal([N*N*Nfeat, Nhidden], stddev=0.1), name='W_1')
+    W_1 = tf.Variable(tf.truncated_normal([N*N*Nfeat, Nhidden], stddev=0.01), name='W_1')
     b_1 = tf.Variable(tf.constant(0.1, dtype=tf.float32, shape=[Nhidden]), name='b_1')
     hidden = tf.nn.relu(tf.matmul(flat_features, W_1) + b_1)
-    W_2 = tf.Variable(tf.truncated_normal([Nhidden, N*N], stddev=0.1), name='W_2')
+    W_2 = tf.Variable(tf.truncated_normal([Nhidden, N*N], stddev=0.01), name='W_2')
     b_2 = tf.Variable(tf.constant(0, dtype=tf.float32, shape=[N*N]), name='b_2')
     logits = tf.matmul(hidden, W_2) + b_2
     variables_to_restore = [W_1, b_1, W_2, b_2]
+    return logits, variables_to_restore
+
+def inference_full_full(feature_planes):
+    Nhidden1 = 512
+    Nhidden2 = 512
+    flat_features = tf.reshape(feature_planes, [-1, N*N*Nfeat])
+    W_1 = tf.Variable(tf.truncated_normal([N*N*Nfeat, Nhidden1], stddev=0.1), name='W_1')
+    b_1 = tf.Variable(tf.constant(0.1, dtype=tf.float32, shape=[Nhidden1]), name='b_1')
+    hidden1 = tf.nn.relu(tf.matmul(flat_features, W_1) + b_1)
+    W_2 = tf.Variable(tf.truncated_normal([Nhidden1, Nhidden2], stddev=0.1), name='W_2')
+    b_2 = tf.Variable(tf.constant(0.1, dtype=tf.float32, shape=[Nhidden2]), name='b_2')
+    hidden2 = tf.nn.relu(tf.matmul(hidden1, W_2) + b_2)
+    W_3 = tf.Variable(tf.truncated_normal([Nhidden2, N*N], stddev=0.1))
+    b_3 = tf.Variable(tf.constant(0.0, dtype=tf.float32, shape=[N*N]))
+    logits = tf.matmul(hidden2, W_3) + b_3
+    variables_to_restore = [W_1, b_1, W_2, b_2, W_3, b_3]
     return logits, variables_to_restore
 
 def loss_func(logits, onehot_moves):
@@ -100,12 +138,23 @@ class RandomizedFilenameQueue:
             #print "FilenameQueue: prepared randomly ordered queue of %d files from %s" % (len(self.queue), self.base_dir)
         return self.queue.pop()
 
+def restore_from_checkpoint(sess, saver, ckpt_dir):
+    ckpt = tf.train.get_checkpoint_state(ckpt_dir)
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+        print "Restored from checkpoint %s" % global_step
+    else:
+        print "No checkpoint file found"
+        assert False
+
 
 def train_model(inference, train_data_dir, val_data_dir, train_ckpt_dir):
     queue = RandomizedFilenameQueue(train_data_dir)
 
     with tf.Graph().as_default():
         learning_rate_ph = tf.placeholder(tf.float32)
+    
         global_step = tf.Variable(0, trainable=False)
 
         # build the graph
@@ -119,8 +168,9 @@ def train_model(inference, train_data_dir, val_data_dir, train_ckpt_dir):
 
         init = tf.initialize_all_variables()
 
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
         sess.run(init)
+        restore_from_checkpoint(sess, saver, train_ckpt_dir)
 
         for step in xrange(max_steps):
             mb_filename = queue.next_filename()
@@ -136,7 +186,7 @@ def train_model(inference, train_data_dir, val_data_dir, train_ckpt_dir):
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-            if step % 1000 == 0:
+            if step % 100 == 0:
                 examples_per_sec = minibatch_size / (load_time + train_time)
                 print "%s: step %d, loss = %.2f, accuracy = %.2f%% (%.1f examples/sec), (load=%.3f train=%.3f sec/batch)" % \
                         (datetime.now(), step, loss_value, 100*accuracy_value, examples_per_sec, load_time, train_time)
@@ -173,13 +223,7 @@ def val_model(inference, val_data_dir, train_ckpt_dir):
         saver = tf.train.Saver(variables_to_restore)
 
         with tf.Session() as sess:
-            ckpt = tf.train.get_checkpoint_state(train_ckpt_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-            else:
-                print "No checkpoint file found"
-                return
+            restore_from_checkpoint(sess, saver, train_ckpt_dir)
 
             total_load_time = 0.0
             total_eval_time = 0.0
@@ -203,30 +247,37 @@ def val_model(inference, val_data_dir, train_ckpt_dir):
             mean_loss /= mb_num
             mean_accuracy /= mb_num
             print "Validation: mean loss = %.3f, mean accuracy = %.2f%%" % (mean_loss, 100*mean_accuracy)
-            print "total load time = %.1f seconds" % total_load_time
-            print "total eval time = %.1f seconds" % total_eval_time
+            print "total load time = %.3f seconds" % total_load_time
+            print "total eval time = %.3f seconds" % total_eval_time
 
 
 if __name__ == "__main__":
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb8192_fe3/train"
     #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb8192_fe3/val"
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb1024_fe3/train"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb1024_fe3/val"
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb1000_fe3/train"
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb1000_fe3/val"
     
     #train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_linear"
-    #train_model(inference_linear, train_data_dir, train_ckpt_dir)
+    #train_model(inference_linear, train_data_dir, val_data_dir, train_ckpt_dir)
     #val_model(inference_linear, val_data_dir, train_ckpt_dir)
     
     #train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_single_conv"
     #train_model(inference_single_conv, train_data_dir, train_ckpt_dir)
     #val_model(inference_single_conv, val_data_dir, train_ckpt_dir)
     
-    train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_single_full"
-    train_model(inference_single_full, train_data_dir, val_data_dir, train_ckpt_dir)
+    #train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_single_full"
+    #train_model(inference_single_full, train_data_dir, val_data_dir, train_ckpt_dir)
     #val_model(inference_single_full, val_data_dir, train_ckpt_dir)
+
+    #train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_full_full"
+    #train_model(inference_full_full, train_data_dir, val_data_dir, train_ckpt_dir)
+    #val_model(inference_full_full, val_data_dir, train_ckpt_dir)
     
     #train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_two_convs"
-    #train_model(inference_two_convs, train_data_dir, train_ckpt_dir)
+    #train_model(inference_two_convs, train_data_dir, val_data_dir, train_ckpt_dir)
     #val_model(inference_two_convs, val_data_dir, train_ckpt_dir)
 
+    train_ckpt_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv_conv_full"
+    train_model(inference_conv_conv_full, train_data_dir, val_data_dir, train_ckpt_dir)
+    #val_model(inference_conv_conv_full, val_data_dir, train_ckpt_dir)
 

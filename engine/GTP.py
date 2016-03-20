@@ -90,7 +90,9 @@ class GTP:
             self.tell_client("pass")
 
     def loop(self):
-        for line in sys.stdin:
+        while True:
+            line = sys.stdin.readline().strip()
+            if len(line) == 0: return
             line = line.strip()
             print "GTP: client sent: " + line
     

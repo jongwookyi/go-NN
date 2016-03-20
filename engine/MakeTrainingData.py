@@ -341,7 +341,7 @@ def make_KGS_training_data():
 
 def make_CGOS9x9_training_data():
     N = 9
-    minibatch_size = 100000
+    minibatch_size = 1000
     num_features = 3
     out_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d" % (minibatch_size, num_features)
     rank_allowed = lambda rank: True

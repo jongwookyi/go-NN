@@ -7,7 +7,7 @@ class TFEngine(BaseEngine):
     def __init__(self, eng_name, inference, model_ckpoint_dir):
         super(TFEngine,self).__init__() 
         self.Nfeat = 3
-        self.N = 19
+        self.N = 9
         self.eng_name = eng_name
 
         self.feature_planes = tf.placeholder(tf.float32, shape=[None, self.N, self.N, self.Nfeat], name='feature_planes')

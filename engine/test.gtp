@@ -1,7 +1,7 @@
 protocol_version
 name
 version
-boardsize 19
+boardsize 9
 clear_board
 play b D4
 genmove w
