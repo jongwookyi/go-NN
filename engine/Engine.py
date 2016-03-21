@@ -21,15 +21,17 @@ class BaseEngine(object):
 
     def clear_board(self):
         self.board.clear()
+        self.opponent_passed = False
 
     def set_komi(self, komi):
         pass
 
     def player_passed(self, color):
-        pass
+        self.opponent_passed = True
 
     def stone_played(self, x, y, color):
         assert self.board.play_stone(x, y, color)
+        self.opponent_passed = False
         self.board.show()
 
     # subclasses must override this

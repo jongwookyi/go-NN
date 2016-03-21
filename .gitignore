@@ -2,6 +2,7 @@
 *.sgf
 *.tar.bz2
 *.npz
+*.swp
 data/KGS/downloads/
 data/KGS/SGFs/
 log*.txt

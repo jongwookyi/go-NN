@@ -10,19 +10,16 @@ from SGFParser import *
 from Board import *
 
 def make_stone_plane(array, board, stone):
-    #for x in xrange(board.N):
-    #    for y in xrange(board.N):
-    #        if board[x,y] == stone: array[x,y] = 1
     np.copyto(array, np.equal(board.vertices, stone))
 
 def make_ones_plane(array, board):
-    np.copyto(array, np.ones((board.N, board.N)))
+    np.copyto(array, np.ones((board.N, board.N), dtype=np.int8))
 
 def make_history_planes(array, board, max_lookback):
     assert array.shape[2] == max_lookback
     for lookback in xrange(max_lookback):
-        if lookback < len(board.move_history):
-            x,y = board.move_history[lookback]
+        if lookback < len(board.move_list):
+            x,y = board.move_list[-1-lookback]
             array[x,y,lookback] = 1
 
 def find_group(board, start_x, start_y):
@@ -43,9 +40,8 @@ def find_group(board, start_x, start_y):
                     visited[adj_x, adj_y] = True
     return group_xys
 
-def count_group_liberties(board, start_x, start_y):
+def count_group_liberties(board, start_x, start_y, visited):
     group_xys = [(start_x, start_y)]
-    visited = np.zeros((board.N, board.N), dtype=np.bool_) 
     visited[start_x, start_y] = True
     group_color = board[start_x, start_y]
     liberties = set()
@@ -62,16 +58,24 @@ def count_group_liberties(board, start_x, start_y):
                 elif adj_stone == group_color and not visited[adj_x, adj_y]:
                     group_xys.append((adj_x, adj_y))
                     visited[adj_x, adj_y] = True
-    return len(liberties)
+    return len(liberties), group_xys
 
-def make_liberty_count_planes(array, board, Nplanes):
+def make_liberty_count_planes(array, board, Nplanes, play_color):
+    assert Nplanes % 2 == 0
     assert array.shape[2] == Nplanes
+    visited = np.zeros((board.N, board.N), dtype=np.bool_) 
     for x in xrange(board.N):
         for y in xrange(board.N):
-            if board[x,y] != Stone.Empty:
-                num_liberties = board.count_group_liberties(x, y)
-                if num_liberties > Nplanes: num_liberties = Nplanes
-                array[x,y,num_libiertes-1] = 1
+            if board[x,y] != Stone.Empty and not visited[x,y]:
+                num_liberties, group_xys = count_group_liberties(board, x, y, visited)
+                # First Nplanes/2 planes: 0=(play color, 1 liberty), 1=(player color, 2 liberties), ...
+                # Next  Nplanes/2 planes: Np/2=(other color, 1 liberty), 1+Np/2=(other color, 2 liberties), ...
+                if num_liberties > Nplanes/2: num_liberties = Nplanes/2
+                plane = num_liberties - 1
+                if board[x,y] != play_color:
+                    plane += Nplanes/2
+                for gx,gy in group_xys:
+                    array[gx,gy,plane] = 1
 
 def make_liberty_count_after_move_planes(array, board, Nplanes, stone):
     assert array.shape[2] == Nplanes
@@ -129,16 +133,16 @@ def make_legality_plane(board, array, stone):
                 array[x,y] = 1
 
 def make_feature_planes(board, play_color):
-    Nplanes = 3
+    Nplanes = 16
     feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
     make_stone_plane(feature_planes[:,:,0], board, play_color)
     make_stone_plane(feature_planes[:,:,1], board, flipped_stone(play_color))
     make_stone_plane(feature_planes[:,:,2], board, Stone.Empty)
-    #make_ones_plane(feature_planes[:,:,3], board)
-    #max_lookback = 8
-    #make_history_planes(feature_planes[:,:,4:12], board, max_lookback)
-    #max_liberties = 8
-    #make_liberty_count_planes(feature_planes[:,:,12:20], board, max_liberties)
+    make_ones_plane(feature_planes[:,:,3], board)
+    max_liberties = 4
+    make_liberty_count_planes(feature_planes[:,:,4:12], board, 2*max_liberties, play_color)
+    max_lookback = 4
+    make_history_planes(feature_planes[:,:,12:16], board, max_lookback)
     #max_captures = 8
     #make_capture_count_planes(feature_planes[:,:,20:28], board, max_captures, play_color)
     #max_self_atari_size = 8
@@ -193,6 +197,38 @@ def test_feature_planes():
         board.play_stone(x, y, play_color)
         play_color = flipped_stone(play_color)
 
+class PlaneTester:
+    def __init__(self, N):
+        self.player = PlayingProcessor(N)
+
+    def begin_game(self):
+        self.player.begin_game()
+    
+    def end_game(self):
+        self.player.end_game()
+
+    def process(self, property_name, property_data):
+        self.player.process(property_name, property_data)
+        if property_name == "W" or property_name == "B":
+            self.player.board.show()
+            #print "LIBERTY PLANES FROM WHITE'S PERSPECTIVE:"
+            #Nplanes = 8
+            #liberty_planes = np.zeros((self.player.board.N, self.player.board.N, Nplanes), np.int8)
+            #make_liberty_count_planes(liberty_planes, self.player.board, Nplanes, Stone.White)
+            #show_all_planes(liberty_planes)
+            print "HISTORY PLANES:"
+            Nplanes = 4
+            history_planes = np.zeros((self.player.board.N, self.player.board.N, Nplanes), np.int8)
+            make_history_planes(history_planes, self.player.board, Nplanes)
+            show_all_planes(history_planes)
+
+
+
+def run_PlaneTester():
+    sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2006/2006-02-10-11.sgf"
+    parse_SGF(sgf, PlaneTester(19))
+        
+
 def write_minibatch(filename, all_feature_planes, all_moves):
     assert all_feature_planes.dtype == np.int8
     assert all_moves.dtype == np.int8
@@ -240,7 +276,6 @@ def test_minibatch_read_write():
         show_feature_planes_and_move(in_feature_planes[i,:,:,:], in_moves[i,:])
 
 
-
 class TrainingDataWriter:
     def __init__(self, N, out_dir, minibatch_size, num_features, rank_allowed):
         self.out_dir = out_dir
@@ -253,12 +288,6 @@ class TrainingDataWriter:
         self.num_features = num_features
         self.rank_allowed = rank_allowed
         #self.known_ranks = set()
-
-    def __enter__(self):
-        self.fout = open(self.training_data_file, 'w')
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.fout.close()
 
     def begin_game(self):
         self.player.begin_game()
@@ -323,8 +352,8 @@ def test_TrainingDataWrite():
 
 def make_KGS_training_data():
     N = 19
-    minibatch_size = 8192
-    num_features = 3
+    minibatch_size = 1000
+    num_features = 16
     out_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d" % (minibatch_size, num_features)
     rank_allowed = lambda rank: rank in ['1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d',
                                          '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p']
@@ -337,12 +366,11 @@ def make_KGS_training_data():
             parse_SGF(filename, writer)
             num_games += 1
             if num_games % 100 == 0: print "num_games =", num_games
-            #if num_games == 1000: return
 
 def make_CGOS9x9_training_data():
     N = 9
     minibatch_size = 1000
-    num_features = 3
+    num_features = 16
     out_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d" % (minibatch_size, num_features)
     rank_allowed = lambda rank: True
     writer = TrainingDataWriter(N, out_dir, minibatch_size, num_features, rank_allowed)
@@ -362,15 +390,11 @@ if __name__ == "__main__":
     #test_feature_planes()
     #test_minibatch_read_write()
     #test_TrainingDataWrite()
+    #run_PlaneTester()
     
-    #make_KGS_training_data()
-    make_CGOS9x9_training_data()
+    make_KGS_training_data()
+    #make_CGOS9x9_training_data()
     
     #import cProfile
     #cProfile.run('make_KGS_training_data()')
-
-
-
-
-
 
