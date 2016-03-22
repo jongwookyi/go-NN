@@ -90,7 +90,7 @@ def train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, j
         saver = tf.train.Saver(tf.trainable_variables())
 
         init = tf.initialize_all_variables()
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
         sess.run(init)
 
         def run_validation(): # run the validation set
@@ -100,7 +100,7 @@ def train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, j
             print "Starting validation..."
             for fn in os.listdir(val_data_dir):
                 mb_filename = os.path.join(val_data_dir, fn)
-                #print "validation minibatch # %d = %s" % (mb_num, mb_filename)
+                print "validation minibatch # %d = %s" % (mb_num, mb_filename)
                 feed_dict = build_feed_dict(mb_filename, N, feature_planes, onehot_moves)
                 loss_value, accuracy_value = sess.run([loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
@@ -114,11 +114,18 @@ def train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, j
             restore_from_checkpoint(sess, saver, model.checkpoint_dir)
             run_validation()
         else: # Run the training loop
-            #restore_from_checkpoint(sess, saver, model.checkpoint_dir)
+            while True:
+                response = raw_input("Restore from checkpoint [y/n]? ").lower()
+                if response == 'y': 
+                    restore_from_checkpoint(sess, saver, model.checkpoint_dir)
+                    break
+                if response == 'n':
+                    break
+
             queue = RandomizedFilenameQueue(train_data_dir)
             step = 0
             while True:
-                if step % 1000 == 0: 
+                if step % 10000 == 0 and step != 0: 
                     run_validation()
 
                 mb_filename = queue.next_filename()
@@ -133,12 +140,12 @@ def train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, j
                 assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
                 train_time = time.time() - start_time
     
-                if step % 10 == 0:
+                if step % 1 == 0:
                     examples_per_sec = minibatch_size / (load_time + train_time)
                     print "%s: step %d, loss = %.2f, accuracy = %.2f%% (%.1f examples/sec), (load=%.3f train=%.3f sec/batch)" % \
                             (datetime.now(), step, loss_value, 100*accuracy_value, examples_per_sec, load_time, train_time)
     
-                if step % 1000 == 0:
+                if step % 1000 == 0 and step != 0:
                     saver.save(sess, os.path.join(model.checkpoint_dir, "model.ckpt"))
     
 
@@ -148,23 +155,28 @@ def train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, j
 
 if __name__ == "__main__":
 
-    N = 9
+    #N = 9
+    #minibatch_size = 1000
+    #Nfeat = 16
+    #train_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
+    #val_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
+    N = 19
     minibatch_size = 1000
     Nfeat = 16
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
-    #N = 19
-    #minibatch_size = 8192
-    #Nfeat = 3
-    #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
-    #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
-    #print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
+
+    print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
     
     #model = Models.Linear(N, Nfeat, minibatch_size, learning_rate=0.0003)
     #model = Models.SingleFull(N, Nfeat, minibatch_size, learning_rate=0.0003)
     #model = Models.Conv3Full(N, Nfeat, minibatch_size, learning_rate=0.0003)
     #model = Models.Conv4Full(N, Nfeat, minibatch_size, learning_rate=0.0003)
-    model = Models.Conv5Full(N, Nfeat, minibatch_size, learning_rate=0.00005) # low learning rate for overnight run
-    
+    #model = Models.Conv5Full(N, Nfeat, minibatch_size, learning_rate=0.00005) # low learning rate for overnight run
+    #model = Models.Conv8(N, Nfeat, minibatch_size, learning_rate=0.0003) 
+    #model = Models.Conv8(N, Nfeat, minibatch_size, learning_rate=0.0003) 
+    #model = Models.Conv8Full(N, Nfeat, minibatch_size, learning_rate=0.00003) 
+
+    model = Models.Conv12(N, Nfeat, minibatch_size, learning_rate=0.00003) # low learning rate for overnight run (and stability)
     train_model(model, N, minibatch_size, Nfeat, train_data_dir, val_data_dir, just_validate=False)
 

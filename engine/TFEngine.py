@@ -43,14 +43,13 @@ def sample_from(probs):
 class TFEngine(BaseEngine):
     def __init__(self, eng_name, model):
         super(TFEngine,self).__init__() 
-        self.Nfeat = 16 # fixme: these should be stored in model
-        self.N = 9
         self.eng_name = eng_name
+        self.model = model
 
         # build the graph
         with tf.Graph().as_default():
-            self.feature_planes = tf.placeholder(tf.float32, shape=[None, self.N, self.N, self.Nfeat], name='feature_planes')
-            self.logits = model.inference(self.feature_planes, self.N, self.Nfeat)
+            self.feature_planes = tf.placeholder(tf.float32, shape=[None, self.model.N, self.model.N, self.model.Nfeat], name='feature_planes')
+            self.logits = model.inference(self.feature_planes, self.model.N, self.model.Nfeat)
             saver = tf.train.Saver(tf.trainable_variables())
             init = tf.initialize_all_variables()
             self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
@@ -68,42 +67,31 @@ class TFEngine(BaseEngine):
         if self.opponent_passed: return None # Pass if opponent passes????
 
         board_feature_planes = make_feature_planes(self.board, color)
-        board_feature_planes = board_feature_planes.reshape((1, self.N, self.N, self.Nfeat))
+        board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
         feed_dict = {self.feature_planes: board_feature_planes}
 
         move_logits = self.sess.run(self.logits, feed_dict)
-        move_logits = move_logits.reshape((self.N * self.N,))
+        move_logits = move_logits.reshape((self.model.N * self.model.N,))
         softmax_temp = 10.0
         move_probs = softmax(move_logits, softmax_temp)
 
-        #best = None
-        #best_score = -1e99
-        #for x in xrange(self.N):
-        #    for y in xrange(self.N):
-        #        ind = self.N * x + y # NEED TO CHECK WHETHER THIS IS CORRECT
-        #        if move_logits[ind] > best_score:
-        #            if self.board.play_is_legal(x, y, color):
-        #                best_score = move_logits[ind]
-        #                best = x,y
-        #return best
-
         # zero out illegal moves
-        for x in xrange(self.N):
-            for y in xrange(self.N):
-                ind = self.N * x + y 
+        for x in xrange(self.model.N):
+            for y in xrange(self.model.N):
+                ind = self.model.N * x + y 
                 if not self.board.play_is_legal(x, y, color):
                     move_probs[ind] = 0
         sum_probs = np.sum(move_probs)
         if sum_probs == 0: return None # no legal moves, pass
         move_probs /= sum_probs # re-normalize probabilities
 
-        pick_best = False
+        pick_best = True
         if pick_best:
             move_ind = np.argmax(move_probs)
         else:
             move_ind = sample_from(move_probs)
-        move_x = move_ind / self.N
-        move_y = move_ind % self.N
+        move_x = move_ind / self.model.N
+        move_y = move_ind % self.model.N
         return move_x, move_y
 
 
