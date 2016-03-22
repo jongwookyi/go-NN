@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import random
 from Engine import *
 from MakeTrainingData import make_feature_planes
 
@@ -25,6 +26,18 @@ def restore_from_checkpoint(sess, saver, ckpt_dir):
     else:
         print "No checkpoint file found"
         assert False
+
+def softmax(E, temp):
+    expE = np.exp(temp * (E - max(E))) # subtract max to avoid overflow
+    return expE / np.sum(expE)
+
+def sample_from(probs):
+    cumsum = np.cumsum(probs)
+    r = random.random()
+    for i in xrange(len(probs)):
+        if r <= cumsum[i]: 
+            return i
+    assert False, "problem with sample_from" 
 
 
 class TFEngine(BaseEngine):
@@ -60,16 +73,40 @@ class TFEngine(BaseEngine):
 
         move_logits = self.sess.run(self.logits, feed_dict)
         move_logits = move_logits.reshape((self.N * self.N,))
+        softmax_temp = 10.0
+        move_probs = softmax(move_logits, softmax_temp)
 
-        best = None
-        best_score = -1e99
+        #best = None
+        #best_score = -1e99
+        #for x in xrange(self.N):
+        #    for y in xrange(self.N):
+        #        ind = self.N * x + y # NEED TO CHECK WHETHER THIS IS CORRECT
+        #        if move_logits[ind] > best_score:
+        #            if self.board.play_is_legal(x, y, color):
+        #                best_score = move_logits[ind]
+        #                best = x,y
+        #return best
+
+        # zero out illegal moves
         for x in xrange(self.N):
             for y in xrange(self.N):
-                ind = self.N * x + y # NEED TO CHECK WHETHER THIS IS CORRECT
-                if move_logits[ind] > best_score:
-                    if self.board.play_is_legal(x, y, color):
-                        best_score = move_logits[ind]
-                        best = x,y
-        return best
+                ind = self.N * x + y 
+                if not self.board.play_is_legal(x, y, color):
+                    move_probs[ind] = 0
+        sum_probs = np.sum(move_probs)
+        if sum_probs == 0: return None # no legal moves, pass
+        move_probs /= sum_probs # re-normalize probabilities
+
+        pick_best = False
+        if pick_best:
+            move_ind = np.argmax(move_probs)
+        else:
+            move_ind = sample_from(move_probs)
+        move_x = move_ind / self.N
+        move_y = move_ind % self.N
+        return move_x, move_y
+
+
+
 
 
