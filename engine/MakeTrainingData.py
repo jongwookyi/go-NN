@@ -9,8 +9,8 @@ import os.path
 from SGFParser import *
 from Board import *
 
-def make_stone_plane(array, board, stone):
-    np.copyto(array, np.equal(board.vertices, stone))
+def make_stone_plane(array, board, color):
+    np.copyto(array, np.equal(board.vertices, color))
 
 def make_ones_plane(array, board):
     np.copyto(array, np.ones((board.N, board.N), dtype=np.int8))
@@ -22,25 +22,7 @@ def make_history_planes(array, board, max_lookback):
             x,y = board.move_list[-1-lookback]
             array[x,y,lookback] = 1
 
-def find_group(board, start_x, start_y):
-    group_xys = [(start_x, start_y)]
-    visited = np.zeros((board.N, board.N), dtype=np.bool_) 
-    visited[start_x, start_y] = True
-    group_color = board[start_x, start_y]
-    i = 0
-    while i < len(group_xys):
-        x,y = group_xys[i]
-        i += 1
-        for dx,dy in dxdys:
-            adj_x, adj_y = x+dx, y+dy
-            if board.is_on_board(adj_x, adj_y):
-                adj_stone = board[adj_x, adj_y]
-                if adj_stone == group_color and not visited[adj_x, adj_y]:
-                    group_xys.append((adj_x, adj_y))
-                    visited[adj_x, adj_y] = True
-    return group_xys
-
-def count_group_liberties(board, start_x, start_y, visited):
+def slow_count_group_liberties(board, start_x, start_y, visited):
     group_xys = [(start_x, start_y)]
     visited[start_x, start_y] = True
     group_color = board[start_x, start_y]
@@ -52,22 +34,22 @@ def count_group_liberties(board, start_x, start_y, visited):
         for dx,dy in dxdys:
             adj_x, adj_y = x+dx, y+dy
             if board.is_on_board(adj_x, adj_y):
-                adj_stone = board[adj_x, adj_y]
-                if adj_stone == Stone.Empty:
+                adj_color = board[adj_x, adj_y]
+                if adj_color == Color.Empty:
                     liberties.add((adj_x, adj_y))
-                elif adj_stone == group_color and not visited[adj_x, adj_y]:
+                elif adj_color == group_color and not visited[adj_x, adj_y]:
                     group_xys.append((adj_x, adj_y))
                     visited[adj_x, adj_y] = True
     return len(liberties), group_xys
 
-def make_liberty_count_planes(array, board, Nplanes, play_color):
+def slow_make_liberty_count_planes(array, board, Nplanes, play_color):
     assert Nplanes % 2 == 0
     assert array.shape[2] == Nplanes
     visited = np.zeros((board.N, board.N), dtype=np.bool_) 
     for x in xrange(board.N):
         for y in xrange(board.N):
-            if board[x,y] != Stone.Empty and not visited[x,y]:
-                num_liberties, group_xys = count_group_liberties(board, x, y, visited)
+            if board[x,y] != Color.Empty and not visited[x,y]:
+                num_liberties, group_xys = slow_count_group_liberties(board, x, y, visited)
                 # First Nplanes/2 planes: 0=(play color, 1 liberty), 1=(player color, 2 liberties), ...
                 # Next  Nplanes/2 planes: Np/2=(other color, 1 liberty), 1+Np/2=(other color, 2 liberties), ...
                 if num_liberties > Nplanes/2: num_liberties = Nplanes/2
@@ -77,74 +59,61 @@ def make_liberty_count_planes(array, board, Nplanes, play_color):
                 for gx,gy in group_xys:
                     array[gx,gy,plane] = 1
 
-def make_liberty_count_after_move_planes(array, board, Nplanes, stone):
+def make_liberty_count_planes(array, board, Nplanes, play_color):
+    assert Nplanes % 2 == 0
     assert array.shape[2] == Nplanes
+    for group in board.all_groups:
+        num_liberties = len(group.liberties)
+        if num_liberties > Nplanes/2: num_liberties = Nplanes/2
+        plane = num_liberties - 1
+        if board[next(iter(group.vertices))] != play_color:
+            plane += Nplanes/2
+        for gx,gy in group.vertices:
+            array[gx,gy,plane] = 1
+
+    ### TEST
+    #slow_liberty_count_planes = np.zeros((board.N, board.N, Nplanes))
+    #slow_make_liberty_count_planes(slow_liberty_count_planes, board, Nplanes, play_color)
+    #assert np.array_equal(slow_liberty_count_planes, array)
+
+def make_capture_count_planes(array, board, Nplanes, play_color):
+    capture_counts = {}
+    for group in board.all_groups:
+        assert len(group.vertices) > 0
+        if group.color != play_color and len(group.liberties) == 1:
+            capture_vertex = next(iter(group.liberties))
+            if capture_vertex != board.simple_ko_vertex:
+                if capture_vertex in capture_counts:
+                    capture_counts[capture_vertex] += len(group.vertices)
+                else:
+                    capture_counts[capture_vertex] = len(group.vertices)
+    for vert in capture_counts:
+        x,y = vert
+        count = capture_counts[vert]
+        if count > Nplanes: count = Nplanes
+        array[x,y,count-1] = 1
+
+# too slow
+def make_legality_plane(array, board, play_color):
     for x in xrange(board.N):
         for y in xrange(board.N):
-            if board[x,y] != Stone.Empty:
-                board.save()
-                if board.play_stone(x, y, stone):
-                    num_liberties = board.count_group_liberties(x, y)
-                    if num_liberties > Nplanes: num_liberties = Nplanes
-                    array[x,y,num_libiertes-1] = 1
-                board.restore()
-
-def make_self_atari_size_planes(array, board, Nplanes, stone):
-    assert array.shape[2] == Nplanes
-    for x in xrange(board.N):
-        for y in xrange(board.N):
-            if board[x,y] != Stone.Empty:
-                board.save()
-                if board.play_stone(x, y, stone):
-                    num_liberties = board.count_group_liberties(x, y)
-                    if num_liberties == 1:
-                        group_size = len(find_group(board, x, y))
-                        if group_size > Nplanes: group_size = Nplanes
-                        array[x,y,group_size-1] = 1
-                board.restore()
-
-def count_stones(board, color):
-    return np.count_nonzero(np.equal(board.vertices, color))
-
-def count_captured_stones(board, x, y, stone):
-    opponent_color = flipped_stone(stone)
-    num_opponent_stones = count_stones(board, opponent_color)
-    num_captured = 0
-    if board[x, y] == Stone.Empty:
-        board.save()
-        if board.play_stone(x, y, stone, just_testing=True):
-            num_captured = num_opponent_stones - count_stones(board, opponent_color)
-        board.restore()
-    return num_captured
-
-def make_capture_count_planes(array, board, max_capture_count, play_color):
-    assert array.shape[2] == max_capture_count
-    for x in xrange(board.N):
-        for y in xrange(board.N):
-            if board[x,y] == Stone.empty:
-                num_captured = count_captured_stones(board, x, y, play_color)
-                if num_captured >= max_capture_count: num_captured = max_capture_count-1
-                array[x,y,num_captured] = 1
-
-def make_legality_plane(board, array, stone):
-    for x in xrange(board.N):
-        for y in xrange(board.N):
-            if board.play_is_legal(x, y, stone):
+            if board.play_is_legal(x, y, play_color):
                 array[x,y] = 1
 
 def make_feature_planes(board, play_color):
-    Nplanes = 16
+    Nplanes = 24
     feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
     make_stone_plane(feature_planes[:,:,0], board, play_color)
-    make_stone_plane(feature_planes[:,:,1], board, flipped_stone(play_color))
-    make_stone_plane(feature_planes[:,:,2], board, Stone.Empty)
+    make_stone_plane(feature_planes[:,:,1], board, flipped_color[play_color])
+    make_stone_plane(feature_planes[:,:,2], board, Color.Empty)
     make_ones_plane(feature_planes[:,:,3], board)
     max_liberties = 4
     make_liberty_count_planes(feature_planes[:,:,4:12], board, 2*max_liberties, play_color)
     max_lookback = 4
     make_history_planes(feature_planes[:,:,12:16], board, max_lookback)
-    #max_captures = 8
-    #make_capture_count_planes(feature_planes[:,:,20:28], board, max_captures, play_color)
+    max_captures = 8
+    make_capture_count_planes(feature_planes[:,:,16:24], board, max_captures, play_color)
+    #make_legality_plane(feature_planes[:,:,24], board, play_color)
     #max_self_atari_size = 8
     #make_self_atari_size_planes(feature_planes[:,:,28:36], board, max_self_atari_size, play_color)
     #max_liberties_after_move = 8
@@ -187,7 +156,7 @@ def show_batch(all_feature_planes, all_moves):
 def test_feature_planes():
     board = Board(5)
     moves = [(0,0), (1,1), (2,2), (3,3), (4,4)]
-    play_color = Stone.Black
+    play_color = Color.Black
     for x,y in moves:
         board.show()
         feature_planes = make_feature_planes(board, play_color)
@@ -195,7 +164,7 @@ def test_feature_planes():
         show_feature_planes_and_move(feature_planes, move_arr)
         print
         board.play_stone(x, y, play_color)
-        play_color = flipped_stone(play_color)
+        play_color = flipped_color[play_color]
 
 class PlaneTester:
     def __init__(self, N):
@@ -214,7 +183,7 @@ class PlaneTester:
             #print "LIBERTY PLANES FROM WHITE'S PERSPECTIVE:"
             #Nplanes = 8
             #liberty_planes = np.zeros((self.player.board.N, self.player.board.N, Nplanes), np.int8)
-            #make_liberty_count_planes(liberty_planes, self.player.board, Nplanes, Stone.White)
+            #make_liberty_count_planes(liberty_planes, self.player.board, Nplanes, Color.White)
             #show_all_planes(liberty_planes)
             print "HISTORY PLANES:"
             Nplanes = 4
@@ -252,7 +221,7 @@ def test_minibatch_read_write():
     num_feature_planes = 3
     all_feature_planes = np.zeros((minibatch_size, N, N, num_feature_planes), dtype=np.int8)
     all_moves = np.zeros((minibatch_size, 2), dtype=np.int8)
-    play_color = Stone.Black
+    play_color = Color.Black
     for i in xrange(minibatch_size):
         print "out example %d" % i
         x,y = moves[i]
@@ -315,9 +284,9 @@ class TrainingDataWriter:
         if self.ignore_game: return
 
         if property_name == "W":
-            self.write_move(Stone.White, property_data)
+            self.write_move(Color.White, property_data)
         elif property_name == "B":
-            self.write_move(Stone.Black, property_data)
+            self.write_move(Color.Black, property_data)
         elif property_name == "WR" or property_name == "BR":
             #if not property_data in self.known_ranks:
                 #self.known_ranks.add(property_data)
@@ -353,7 +322,7 @@ def test_TrainingDataWrite():
 def make_KGS_training_data():
     N = 19
     minibatch_size = 1000
-    num_features = 16
+    num_features = 24
     out_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d" % (minibatch_size, num_features)
     rank_allowed = lambda rank: rank in ['1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d',
                                          '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p']
@@ -370,7 +339,7 @@ def make_KGS_training_data():
 def make_CGOS9x9_training_data():
     N = 9
     minibatch_size = 1000
-    num_features = 16
+    num_features = 24
     out_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d" % (minibatch_size, num_features)
     rank_allowed = lambda rank: True
     writer = TrainingDataWriter(N, out_dir, minibatch_size, num_features, rank_allowed)
@@ -392,9 +361,9 @@ if __name__ == "__main__":
     #test_TrainingDataWrite()
     #run_PlaneTester()
     
-    make_KGS_training_data()
-    #make_CGOS9x9_training_data()
+    #make_KGS_training_data()
+    make_CGOS9x9_training_data()
     
     #import cProfile
-    #cProfile.run('make_KGS_training_data()')
+    #cProfile.run('make_KGS_training_data()', sort='cumtime')
 

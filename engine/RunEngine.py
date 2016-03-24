@@ -22,7 +22,8 @@ import Models
 #engine = TFEngine("conv3full", Models.Conv3Full(N=9, Nfeat=12, minibatch_size=1000, learning_rate=0))
 #engine = TFEngine("conv4full", Models.Conv4Full(N=9, Nfeat=16, minibatch_size=1000, learning_rate=0))
 #engine = TFEngine("conv5full", Models.Conv5Full(N=9, Nfeat=16, minibatch_size=1000, learning_rate=0))
-engine = TFEngine("conv8", Models.Conv8(N=19, Nfeat=16))
+#engine = TFEngine("conv8", Models.Conv8(N=19, Nfeat=16))
+engine = TFEngine("conv12", Models.Conv12(N=19, Nfeat=16))
 
 gtp = GTP(engine, fclient)
 

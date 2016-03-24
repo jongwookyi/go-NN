@@ -97,23 +97,25 @@ class PlayingProcessor:
     def end_game(self):
         pass
 
-    def play_stone(self, stone, vertex_str):
+    def play_stone(self, color, vertex_str):
         vertex = parse_vertex(vertex_str)
         if vertex: # if not pass
             x, y = vertex
-            assert self.board.play_stone(x, y, stone)
+            self.board.play_stone(x, y, color)
+        else:
+            self.board.play_pass()
 
     def process(self, property_name, property_data):
         if property_name == "B": # black plays
-            self.play_stone(Stone.Black, property_data)
+            self.play_stone(Color.Black, property_data)
         elif property_name == "W": # white plays
-            self.play_stone(Stone.White, property_data)
+            self.play_stone(Color.White, property_data)
         elif property_name == "AB": # black handicap stones
             for vertex_str in property_data:
-                self.play_stone(Stone.Black, vertex_str)
+                self.play_stone(Color.Black, vertex_str)
         elif property_name == "AW": # white handicap stones
             for vertex_str in property_data:
-                self.play_stone(Stone.White, vertex_str)
+                self.play_stone(Color.White, vertex_str)
         elif property_name == "SZ": # board size
             assert int(property_data) == self.board.N
 
@@ -149,14 +151,15 @@ def test_DebugProcessor():
     parse_SGF("../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf", processor)
 
 def test_PrintingProcessor():
-    #processor = PrintingProcessor(19)
+    processor = PrintingProcessor(19)
     #parse_SGF("../data/KGS/SGFs/kgs-19-2008-10-new/2008-10-12-5.sgf", processor)
     #parse_SGF("../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf", processor)
     #parse_SGF("/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-01-17.sgf", processor)
     #parse_SGF("/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-15-4.sgf", processor)
-    processor = PrintingProcessor(9)
-    parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2285.sgf", processor)
-    parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2412.sgf", processor)
+    parse_SGF("/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-09-18.sgf", processor)
+    #processor = PrintingProcessor(9)
+    #parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2285.sgf", processor)
+    #parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2412.sgf", processor)
 
 if __name__ == "__main__":
     #test_DebugProcessor()

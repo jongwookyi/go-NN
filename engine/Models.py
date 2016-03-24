@@ -1,16 +1,25 @@
 import tensorflow as tf
 import math
 
-def conv_layer_no_relu(inputs, diameter, Nin, Nout):
+def conv(inputs, diameter, Nin, Nout):
     fan_in = diameter * diameter * Nin
     stddev = math.sqrt(2.0 / fan_in)
     kernel = tf.Variable(tf.truncated_normal([diameter, diameter, Nin, Nout], stddev=stddev))
-    bias = tf.Variable(tf.constant(0.1, shape=[Nout]))
-    conv = tf.nn.conv2d(inputs, kernel, [1, 1, 1, 1], padding='SAME') + bias
-    return conv
+    return tf.nn.conv2d(inputs, kernel, [1, 1, 1, 1], padding='SAME')
 
-def conv_layer(inputs, diameter, Nin, Nout):
-    return tf.nn.relu(conv_layer_no_relu(inputs, diameter, Nin, Nout))
+def conv_uniform_bias(inputs, diameter, Nin, Nout):
+    bias = tf.Variable(tf.constant(0.0, shape=[Nout]))
+    return conv(inputs, diameter, Nin, Nout) + bias
+
+def conv_pos_dep_bias(inputs, diameter, Nin, Nout, N):
+    bias = tf.Variable(tf.constant(0.0, shape=[N, N, Nout]))
+    return conv(inputs, diameter, Nin, Nout) + bias
+
+def relu_conv_uniform_bias(inputs, diameter, Nin, Nout):
+    return tf.nn.relu(conv_uniform_bias(inputs, diamter, Nin, Nout))
+
+def relu_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N):
+    return tf.nn.relu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N))
 
 def linear_layer(inputs, Nin, Nout):
     stddev = math.sqrt(2.0 / Nin)
@@ -137,6 +146,7 @@ class Conv8Full:
         logits = linear_layer(hidden9, Nhidden, N*N)
         return logits
 
+# didn't get higher than ~33% on KGS :(
 class Conv12: # AlphaGo architecture
     def __init__(self, N, Nfeat, minibatch_size=1000, learning_rate=0.0003):
         self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv12_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
@@ -160,6 +170,40 @@ class Conv12: # AlphaGo architecture
         conv12_flat = tf.reshape(conv12, [-1, N*N])        
         bias = tf.Variable(tf.constant(0, shape=[N*N], dtype=tf.float32)) # position-dependent bias
         logits = conv12_flat + bias
+        return logits
+
+# smallest network described in Maddison et al. paper
+# They claim 37.5% accuracy on KGS
+# One difference is that they have two output planes, one for each color
+class MaddisonMinimal: 
+    def __init__(self, N, Nfeat, minibatch_size=1000, learning_rate=0.0003):
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/maddison_minimal_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.learning_rate = learning_rate
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 16
+        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NK, self.N)
+        conv2 = relu_conv_pos_dep_bias(conv1, 3, NK, NK, self.N)
+        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, self.N)
+        conv4 = conv_pos_dep_bias(conv3, 1, NK, 1, self.N)
+        logits = tf.reshape(conv4, [-1, N*N])
+        return logits
+
+class Conv6PosDep: 
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/conv6posdep_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 128
+        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NK, N)
+        conv2 = relu_conv_pos_dep_bias(conv1, 3, NK, NK, N)
+        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N)
+        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N)
+        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N)
+        conv6 = conv_pos_dep_bias(conv5, 1, NK, 1, N) 
+        logits = tf.reshape(conv6, [-1, N*N])        
         return logits
 
 
