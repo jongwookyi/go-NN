@@ -1,25 +1,25 @@
 import tensorflow as tf
 import math
 
-def conv(inputs, diameter, Nin, Nout):
+def conv(inputs, diameter, Nin, Nout, name):
     fan_in = diameter * diameter * Nin
     stddev = math.sqrt(2.0 / fan_in)
-    kernel = tf.Variable(tf.truncated_normal([diameter, diameter, Nin, Nout], stddev=stddev))
+    kernel = tf.Variable(tf.truncated_normal([diameter, diameter, Nin, Nout], stddev=stddev), name=name+'_kernel')
     return tf.nn.conv2d(inputs, kernel, [1, 1, 1, 1], padding='SAME')
 
-def conv_uniform_bias(inputs, diameter, Nin, Nout):
-    bias = tf.Variable(tf.constant(0.0, shape=[Nout]))
-    return conv(inputs, diameter, Nin, Nout) + bias
+def conv_uniform_bias(inputs, diameter, Nin, Nout, name):
+    bias = tf.Variable(tf.constant(0.0, shape=[Nout]), name=name+'_bias')
+    return conv(inputs, diameter, Nin, Nout, name) + bias
 
-def conv_pos_dep_bias(inputs, diameter, Nin, Nout, N):
-    bias = tf.Variable(tf.constant(0.0, shape=[N, N, Nout]))
-    return conv(inputs, diameter, Nin, Nout) + bias
+def conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
+    bias = tf.Variable(tf.constant(0.0, shape=[N, N, Nout]), name=name+'_bias')
+    return conv(inputs, diameter, Nin, Nout, name) + bias
 
-def relu_conv_uniform_bias(inputs, diameter, Nin, Nout):
-    return tf.nn.relu(conv_uniform_bias(inputs, diamter, Nin, Nout))
+def relu_conv_uniform_bias(inputs, diameter, Nin, Nout, name):
+    return tf.nn.relu(conv_uniform_bias(inputs, diamter, Nin, Nout, name))
 
-def relu_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N):
-    return tf.nn.relu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N))
+def relu_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
+    return tf.nn.relu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
 
 def linear_layer(inputs, Nin, Nout):
     stddev = math.sqrt(2.0 / Nin)
@@ -126,7 +126,7 @@ class Conv8:
 
 class Conv8Full: 
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv8_full_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/ckpts_conv8_full_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
         self.N = N
         self.Nfeat = Nfeat
@@ -192,17 +192,17 @@ class MaddisonMinimal:
 
 class Conv6PosDep: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/conv6posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv6posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
         NK = 128
-        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NK, N)
-        conv2 = relu_conv_pos_dep_bias(conv1, 3, NK, NK, N)
-        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N)
-        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N)
-        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N)
-        conv6 = conv_pos_dep_bias(conv5, 1, NK, 1, N) 
+        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NK, N, 'conv1')
+        conv2 = relu_conv_pos_dep_bias(conv1, 3, NK, NK, N, 'conv2')
+        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
+        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
+        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
+        conv6 = conv_pos_dep_bias(conv5, 1, NK, 1, N, 'conv6') 
         logits = tf.reshape(conv6, [-1, N*N])        
         return logits
 

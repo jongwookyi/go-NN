@@ -5,6 +5,7 @@ import struct
 import sys
 import os
 import os.path
+import time
 
 from SGFParser import *
 from Board import *
@@ -204,7 +205,7 @@ def write_minibatch(filename, all_feature_planes, all_moves):
     assert len(all_feature_planes.shape) == 4
     assert len(all_moves.shape) == 2
     assert all_feature_planes.shape[0] == all_moves.shape[0]
-    print "writing %s" % filename
+    #print "writing %s" % filename
     np.savez_compressed(filename, feature_planes=all_feature_planes, moves=all_moves)
 
 def read_minibatch(filename):
@@ -257,6 +258,8 @@ class TrainingDataWriter:
         self.num_features = num_features
         self.rank_allowed = rank_allowed
         #self.known_ranks = set()
+        self.start_time = time.time()
+        self.num_positions = 0
 
     def begin_game(self):
         self.player.begin_game()
@@ -275,9 +278,12 @@ class TrainingDataWriter:
         if self.example_index == self.minibatch_size:
             filename = "%s/train_mb%d_fe%d.%d" % (self.out_dir, self.minibatch_size, 
                                                   self.num_features, self.minibatch_number)
-            write_minibatch(filename, self.minibatch_features, self.minibatch_moves)
+            #write_minibatch(filename, self.minibatch_features, self.minibatch_moves)
             self.example_index = 0
             self.minibatch_number += 1
+        self.num_positions += 1
+        if self.num_positions % 1000 == 0:
+            print "positions per second = ", self.num_positions/(time.time() - self.start_time)
 
 
     def process(self, property_name, property_data):
@@ -361,8 +367,8 @@ if __name__ == "__main__":
     #test_TrainingDataWrite()
     #run_PlaneTester()
     
-    #make_KGS_training_data()
-    make_CGOS9x9_training_data()
+    make_KGS_training_data()
+    #make_CGOS9x9_training_data()
     
     #import cProfile
     #cProfile.run('make_KGS_training_data()', sort='cumtime')

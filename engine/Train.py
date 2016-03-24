@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
 import tensorflow as tf
+from tensorflow.core.framework import summary_pb2
 import numpy as np
 import os
 import random
 import time
 from datetime import datetime
-from MakeTrainingData import read_minibatch
 import Models
+from Minibatcher import *
 
 
 def loss_func(logits, onehot_moves, minibatch_size):
@@ -47,8 +48,8 @@ def apply_random_symmetries(feature_planes, move_arrs, N):
             move_arrs[i,:] = move_arrs[i,::-1]
         
 
-def build_feed_dict(mb_filename, N, feature_planes, onehot_moves):
-    loaded_feature_planes, loaded_move_arrs = read_minibatch(mb_filename)
+def build_feed_dict(minibatcher, N, feature_planes, onehot_moves):
+    loaded_feature_planes, loaded_move_arrs = minibatcher.next_minibatch()
     apply_random_symmetries(loaded_feature_planes, loaded_move_arrs, N)
     loaded_move_indices = N * loaded_move_arrs[:,0] + loaded_move_arrs[:,1] # NEED TO CHECK ORDER
     assert minibatch_size == loaded_feature_planes.shape[0] == loaded_move_indices.shape[0]
@@ -65,20 +66,31 @@ def restore_from_checkpoint(sess, saver, train_dir):
     if checkpoint and ckpt.model_checkpoint_path:
         print "Checkpoint file is ", ckpt.model_checkpoint_path
         saver.restore(sess, ckpt.model_checkpoint_path)
+        step = checkpoint.model_checkpoint_path.split('/')[-1].split('-')[-1]
         print "Restored from checkpoint"
     else:
         print "No checkpoint file found"
         assert False
+    return step
 
-def add_loss_summaries(total_loss):
+def optionally_restore_from_checkpoint(sess, saver, train_dir):
+    while True:
+        response = raw_input("Restore from checkpoint [y/n]? ").lower()
+        if response == 'y': 
+            return restore_from_checkpoint(sess, saver, train_dir)
+        if response == 'n':
+            return 0
+
+def add_loss_summaries(total_loss, accuracy):
     # Compute the moving average of all individual losses and the total loss.
-    loss_averages = tf.train.ExponentialMovingAverage(0.99, name='avg')
+    loss_averages = tf.train.ExponentialMovingAverage(0.99875, name='avg')
     losses = tf.get_collection('losses')
-    loss_averages_op = loss_averages.apply(losses + [total_loss])
+    accuracy_pct = tf.mul(accuracy, tf.constant(100.0), name='accuracy_percent')
+    loss_averages_op = loss_averages.apply(losses + [total_loss, accuracy_pct])
 
     # Attach a scalar summary to all individual losses and the total loss; do the
     # same for the averaged version of the losses.
-    for l in losses + [total_loss]:
+    for l in losses + [total_loss, accuracy_pct]:
         # Name each loss as '(raw)' and name the moving average version of the loss
         # as the original loss name.
         tf.scalar_summary(l.op.name +' (raw)', l)
@@ -86,8 +98,8 @@ def add_loss_summaries(total_loss):
 
     return loss_averages_op
 
-def train_step(total_loss, learning_rate):
-    loss_averages_op = add_loss_summaries(total_loss)
+def train_step(total_loss, accuracy, learning_rate):
+    loss_averages_op = add_loss_summaries(total_loss, accuracy)
 
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
@@ -111,6 +123,8 @@ def train_step(total_loss, learning_rate):
 
     return train_op
 
+def make_summary(name, val):
+    return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
 
 def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, val_data_dir, just_validate=False):
     with tf.Graph().as_default():
@@ -121,7 +135,7 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
 
         logits = model.inference(feature_planes, N, Nfeat)
         total_loss, accuracy = loss_func(logits, onehot_moves, minibatch_size)
-        train_op = train_step(total_loss, learning_rate_ph)
+        train_op = train_step(total_loss, accuracy, learning_rate_ph)
 
         saver = tf.train.Saver(tf.trainable_variables())
 
@@ -134,14 +148,13 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
         summary_writer = tf.train.SummaryWriter(os.path.join(model.train_dir, 'summaries'), graph_def=sess.graph_def)
 
         def run_validation(): # run the validation set
+            val_minibatcher = NpzMinibatcher(val_data_dir, infinite=False, randomize=False)
             mean_loss = 0.0
             mean_accuracy = 0.0
             mb_num = 0
             print "Starting validation..."
-            for fn in os.listdir(val_data_dir):
-                mb_filename = os.path.join(val_data_dir, fn)
-                #print "validation minibatch # %d = %s" % (mb_num, mb_filename)
-                feed_dict = build_feed_dict(mb_filename, N, feature_planes, onehot_moves)
+            while val_minibatcher.has_more():
+                feed_dict = build_feed_dict(val_minibatcher, N, feature_planes, onehot_moves)
                 loss_value, accuracy_value = sess.run([total_loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
                 mean_accuracy += accuracy_value
@@ -149,6 +162,9 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
             mean_loss /= mb_num
             mean_accuracy /= mb_num
             print "Validation: mean loss = %.3f, mean accuracy = %.2f%%" % (mean_loss, 100*mean_accuracy)
+            summary_writer.add_summary(make_summary('validation_loss', mean_loss), step)
+            summary_writer.add_summary(make_summary('validation_accuracy_percent', 100*mean_accuracy), step)
+    
 
         checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
         
@@ -157,33 +173,22 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
             restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
-            while True:
-                response = raw_input("Restore from checkpoint [y/n]? ").lower()
-                if response == 'y': 
-                    restore_from_checkpoint(sess, saver, model.train_dir)
-                    break
-                if response == 'n':
-                    break
-
-            queue = RandomizedFilenameQueue(train_data_dir)
-            step = 0
+            step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
+            minibatcher = RandomizingNpzMinibatcher(train_data_dir, N, Nfeat, minibatch_size)
             while True:
                 if step % 10000 == 0 and step != 0: 
                     run_validation()
 
-                mb_filename = queue.next_filename()
-    
                 start_time = time.time()
-                feed_dict = build_feed_dict(mb_filename, N, feature_planes, onehot_moves)
+                feed_dict = build_feed_dict(minibatcher, N, feature_planes, onehot_moves)
                 load_time = time.time() - start_time
-                feed_dict[learning_rate_ph] = learning_rate / minibatch_size
+                feed_dict[learning_rate_ph] = learning_rate
     
                 start_time = time.time()
-                _, summary_str, loss_value, accuracy_value = sess.run([train_op, summary_op, total_loss, accuracy], feed_dict=feed_dict)
-                #_, loss_value, accuracy_value = sess.run([train_op, total_loss, accuracy], feed_dict=feed_dict)
+                _, loss_value, accuracy_value, summary_str = sess.run([train_op, total_loss, accuracy, summary_op], feed_dict=feed_dict)
                 assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
                 train_time = time.time() - start_time
-    
+
                 if step % 10 == 0:
                     summary_writer.add_summary(summary_str, step)
 
@@ -208,10 +213,10 @@ if __name__ == "__main__":
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
     #val_data_dir = "/home/greg/coding/ML/go/NN/data/CGOS/9x9/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
     N = 19
-    minibatch_size = 1000
+    minibatch_size = 128 #1000
     Nfeat = 24
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/train" % (minibatch_size, Nfeat)
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb%d_fe%d/val" % (minibatch_size, Nfeat)
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb1000_fe24/train"
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/mb1000_fe24/val"
 
     print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
     
