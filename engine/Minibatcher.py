@@ -8,13 +8,48 @@ from MakeTrainingData import read_minibatch
 class NpzMinibatcher:
     def __init__(self, npz_dir):
         self.filename_queue = [os.path.join(npz_dir, f) for f in os.listdir(npz_dir)]
-
-    def has_more():
+    def has_more(self):
         return len(self.filename_queue) > 0
-
     def next_minibatch(self):
         return read_minibatch(self.filename_queue.pop())
 
+class RandomizingNpzMinibatcher:
+    def __init__(self, npz_dir):
+        self.filename_queue = None
+        self.npz_dir = npz_dir
+    def next_minibatch(self):
+        if not self.filename_queue:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+        return read_minibatch(self.filename_queue.pop())
+
+
+class GroupingRandomizingNpzMinibatcher:
+    def __init__(self, npz_dir, Ngroup):
+        self.filename_queue = []
+        self.npz_dir = npz_dir
+        self.Ngroup = Ngroup
+    def next_minibatch(self):
+        if len(self.filename_queue) < self.Ngroup:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+        components = [read_minibatch(self.filename_queue.pop()) for i in xrange(self.Ngroup)]
+        Nperfile = components[0][0].shape[0]
+        N = components[0][0].shape[1]
+        Nfeat = components[0][0].shape[3]
+        grouped_features = np.empty((Nperfile * self.Ngroup, N, N, Nfeat), dtype=np.int8)
+        grouped_moves = np.empty((Nperfile * self.Ngroup, 2), dtype=np.int8)
+        for i in xrange(self.Ngroup):
+            start = i * Nperfile
+            end = (i+1) * Nperfile
+            grouped_features[start:end,:,:,:], grouped_moves[start:end,:] = components[i]
+        return grouped_features, grouped_moves
+
+
+
+"""
 class RandomizingNpzMinibatcher:
     def __init__(self, npz_dir, N, Nfeat, minibatch_size):
         self.npz_dir = npz_dir
@@ -46,13 +81,13 @@ class RandomizingNpzMinibatcher:
             prepared_features = np.empty((Nfiles * Nperfile, self.N, self.N, self.Nfeat), dtype=np.int8)
             prepared_moves = np.empty((Nfiles * Nperfile, 2), dtype=np.int8)
             for b in xrange(Nfiles):
-                print "loading", b
+                #print "loading", b
                 start = b * Nperfile
                 end = (b+1) * Nperfile
                 features, move = read_minibatch(self.next_filename())
                 prepared_features[start:end,:,:,:] = features
                 prepared_moves[start:end,:] = move
-            print "randomizing"
+            print "randomizing..."
             reordering = range(Nfiles * Nperfile)
             random.shuffle(reordering)
             prepared_features = prepared_features[reordering,:,:,:]
@@ -64,6 +99,7 @@ class RandomizingNpzMinibatcher:
             print "Done. Took %.3f seconds." % (time.time() - start_time)
 
         return self.prepared_minibatches.pop()
+"""
 
 
 

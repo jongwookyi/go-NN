@@ -141,6 +141,7 @@ class Board:
     # Need to tell the board when someone passes so it can clear the ko state
     def play_pass(self):
         self.simple_ko_vertex = None
+        self.move_list.append(None)
             
     def flip_colors(self):
         for x in range(self.N):

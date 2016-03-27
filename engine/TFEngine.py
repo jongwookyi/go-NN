@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import random
+import os
 from Engine import *
-from MakeTrainingData import make_feature_planes
+import Features
 
 #def build_feed_dict(mb_filename, feature_planes, onehot_moves):
 #    N = 9
@@ -54,7 +55,7 @@ class TFEngine(BaseEngine):
             init = tf.initialize_all_variables()
             self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
             self.sess.run(init)
-            restore_from_checkpoint(self.sess, saver, model.checkpoint_dir)
+            restore_from_checkpoint(self.sess, saver, os.path.join(model.train_dir, 'checkpoints'))
 
 
     def name(self):
@@ -66,14 +67,22 @@ class TFEngine(BaseEngine):
     def pick_move(self, color):
         if self.opponent_passed: return None # Pass if opponent passes????
 
-        board_feature_planes = make_feature_planes(self.board, color)
+        #board_feature_planes = make_feature_planes(self.board, color)
+        board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
         board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
         feed_dict = {self.feature_planes: board_feature_planes}
 
         move_logits = self.sess.run(self.logits, feed_dict)
         move_logits = move_logits.reshape((self.model.N * self.model.N,))
+        #print move_logits
         softmax_temp = 10.0
         move_probs = softmax(move_logits, softmax_temp)
+
+        for y in xrange(self.model.N):
+            for x in xrange(self.model.N):
+                ind = self.model.N * x + y 
+                print "%7.3f" % move_logits[ind],
+            print
 
         # zero out illegal moves
         for x in xrange(self.model.N):

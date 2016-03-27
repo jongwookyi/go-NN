@@ -23,7 +23,11 @@ import Models
 #engine = TFEngine("conv4full", Models.Conv4Full(N=9, Nfeat=16, minibatch_size=1000, learning_rate=0))
 #engine = TFEngine("conv5full", Models.Conv5Full(N=9, Nfeat=16, minibatch_size=1000, learning_rate=0))
 #engine = TFEngine("conv8", Models.Conv8(N=19, Nfeat=16))
-engine = TFEngine("conv12", Models.Conv12(N=19, Nfeat=16))
+#engine = TFEngine("conv12", Models.Conv12(N=19, Nfeat=16))
+#engine = TFEngine("firstmovetest", Models.FirstMoveTest(19, 15))
+#engine = TFEngine("conv6posdep", Models.Conv6PosDep(N=19, Nfeat=15))
+engine = TFEngine("conv8posdep", Models.Conv8PosDep(N=19, Nfeat=15))
+#engine = TFEngine("conv12posdep", Models.Conv12PosDep(N=19, Nfeat=15))
 
 gtp = GTP(engine, fclient)
 

@@ -1,12 +1,12 @@
 import sys
 
-from Board import Stone
+from Board import Color
 from Board import Board
 from Board import color_names
 
 def color_from_str(s):
-    if 'w' in s or 'W' in s: return Stone.White
-    else: return Stone.Black
+    if 'w' in s or 'W' in s: return Color.White
+    else: return Color.Black
 
 def coords_from_str(s):
     x = ord(s[0]) - ord('A')

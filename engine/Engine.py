@@ -30,7 +30,7 @@ class BaseEngine(object):
         self.opponent_passed = True
 
     def stone_played(self, x, y, color):
-        assert self.board.play_stone(x, y, color)
+        self.board.play_stone(x, y, color)
         self.opponent_passed = False
         self.board.show()
 
@@ -42,7 +42,7 @@ class BaseEngine(object):
         coords = self.pick_move(color)
         if coords:
             x,y = coords
-            assert self.board.play_stone(x, y, color)
+            self.board.play_stone(x, y, color)
         self.board.show()
         return coords
 

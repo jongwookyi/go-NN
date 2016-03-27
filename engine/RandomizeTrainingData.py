@@ -17,10 +17,10 @@ def randomize_batches(in_dir, out_dir):
     total_Nfiles = len(filename_queue)
     
     N = 19
-    Nfeat = 24
+    Nfeat = 15
     
-    maxNfiles = 100
-    Nperfile = 1000
+    maxNfiles = 200
+    Nperfile = 128
     
     out_num = 0
     
