@@ -21,6 +21,9 @@ def relu_conv_uniform_bias(inputs, diameter, Nin, Nout, name):
 def relu_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
     return tf.nn.relu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
 
+def ELU_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
+    return tf.nn.elu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
+
 def linear_layer(inputs, Nin, Nout):
     stddev = math.sqrt(2.0 / Nin)
     print "linear layer using stddev =", stddev
@@ -206,6 +209,7 @@ class Conv6PosDep:
         logits = tf.reshape(conv6, [-1, N*N])        
         return logits
 
+# Got to ~46.7% on KGS after 58K minibatches of 256 (~12 hours of training), NK=192, learning_rate=0.03
 class Conv8PosDep: 
     def __init__(self, N, Nfeat):
         self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv8posdep_N%d_fe%d" % (N, Nfeat)
@@ -225,31 +229,54 @@ class Conv8PosDep:
         logits = tf.reshape(conv8, [-1, N*N])        
         return logits
 
-# Don't change this, it actually works
-# Settings: 
-# regular GradientDescent, step size 0.1
-# minibatch size 256 
-# (really two 128-batches combined by GroupingRandomizingNpzMinibatcher, 
-#  128's were randomized by RandomizeTrainingData)
-# NK = 192
-# NKfirst = 192
-# 15 features:
-#def make_feature_planes_stones_3liberties_4history_ko(board, play_color):
-#    Nplanes = 15
-#    feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
-#    make_color_plane(feature_planes[:,:,0], board, play_color)
-#    make_color_plane(feature_planes[:,:,1], board, flipped_color[play_color])
-#    make_color_plane(feature_planes[:,:,2], board, Color.Empty)
-#    make_ones_plane(feature_planes[:,:,3], board)
-#    max_liberties = 3
-#    make_liberty_count_planes(feature_planes[:,:,4:10], board, 2*max_liberties, play_color)
-#    max_lookback = 4
-#    make_history_planes(feature_planes[:,:,10:14], board, max_lookback)
-#    make_simple_ko_plane(feature_planes[:,:,14], board)
-#    return feature_planes
-# self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv12posdep_N%d_fe%d" % (N, Nfeat)
-# KGS dataset, accepting all games with both players 1-9d or 1-9p
-# Raw training accuracy is 
+class Conv10PosDep: 
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 192
+        NKfirst = 192
+        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NKfirst, N, 'conv1')
+        conv2 = relu_conv_pos_dep_bias(conv1, 3, NKfirst, NK, N, 'conv2')
+        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
+        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
+        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
+        conv6 = relu_conv_pos_dep_bias(conv5, 3, NK, NK, N, 'conv6')
+        conv7 = relu_conv_pos_dep_bias(conv6, 3, NK, NK, N, 'conv7')
+        conv8 = relu_conv_pos_dep_bias(conv7, 3, NK, NK, N, 'conv8')
+        conv9 = relu_conv_pos_dep_bias(conv8, 3, NK, NK, N, 'conv9')
+        conv10 = conv_pos_dep_bias(conv9, 3, NK, 1, N, 'conv10') 
+        logits = tf.reshape(conv10, [-1, N*N])        
+        return logits
+
+# ELUs seem to give a ~1.1% increase in training accuracy out to at least 
+# 12K minibatches of 256. This is with the centering transformation
+#       loaded_feature_planes = (loaded_feature_planes.astype(np.float32) - 0.154) * 2.77
+# on KGS data using make_feature_planes_stones_3liberties_4history_ko
+# Using ReLUs, that centering transformation produces only a ~0.2% increase in training accuracy
+# which seems to be disappearing after 8K minibatches. But with ELUs it is more permanent?
+class Conv10PosDepELU: 
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 192
+        NKfirst = 192
+        conv1 = ELU_conv_pos_dep_bias(feature_planes, 5, Nfeat, NKfirst, N, 'conv1')
+        conv2 = ELU_conv_pos_dep_bias(conv1, 3, NKfirst, NK, N, 'conv2')
+        conv3 = ELU_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
+        conv4 = ELU_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
+        conv5 = ELU_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
+        conv6 = ELU_conv_pos_dep_bias(conv5, 3, NK, NK, N, 'conv6')
+        conv7 = ELU_conv_pos_dep_bias(conv6, 3, NK, NK, N, 'conv7')
+        conv8 = ELU_conv_pos_dep_bias(conv7, 3, NK, NK, N, 'conv8')
+        conv9 = ELU_conv_pos_dep_bias(conv8, 3, NK, NK, N, 'conv9')
+        conv10 = conv_pos_dep_bias(conv9, 3, NK, 1, N, 'conv10') 
+        logits = tf.reshape(conv10, [-1, N*N])        
+        return logits
+
 class Conv12PosDep: 
     def __init__(self, N, Nfeat):
         self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv12posdep_N%d_fe%d" % (N, Nfeat)
@@ -274,7 +301,6 @@ class Conv12PosDep:
         return logits
 
 
-
 class FirstMoveTest: 
     def __init__(self, N, Nfeat):
         self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/first_move_test"
@@ -284,3 +310,25 @@ class FirstMoveTest:
         bias = tf.Variable(tf.constant(0.0, shape=[self.N, self.N, 1]), name='single_bias')
         logits = tf.reshape(bias, [-1, N*N])
         return logits
+
+
+
+class InfluenceConv8PosDep:
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/influence_conv8posdep_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 192
+        NKfirst = 192
+        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NKfirst, N, 'conv1')
+        conv2 = relu_conv_pos_dep_bias(conv1, 3, NKfirst, NK, N, 'conv2')
+        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
+        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
+        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
+        conv6 = relu_conv_pos_dep_bias(conv5, 3, NK, NK, N, 'conv6')
+        conv7 = relu_conv_pos_dep_bias(conv6, 3, NK, NK, N, 'conv7')
+        conv8 = conv_pos_dep_bias(conv7, 3, NK, 1, N, 'conv8') 
+        logits = tf.reshape(conv8, [-1, N*N])        
+        return logits # use with sigmoid and sigmoid_cross_entropy_with_logits
+

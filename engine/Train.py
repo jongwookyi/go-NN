@@ -24,8 +24,33 @@ def loss_func(logits, onehot_moves, minibatch_size):
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     return loss, accuracy
 
+#def influence_loss_func(logits, final_maps):
+#    assert False
+#    # final maps are originally -1 to 1. rescale them to 0 to 1 probabilities:
+#    final_prob_map = final_maps * tf.constant(0.5) + tf.constant(0.5)
+#    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, targets=final_prob_map)
+#    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='influence_cross_entropy_mean')
+#
+#    error_rate =  tf.reduce_mean(tf.equal(tf.sign(logits) - tf.sign(final_maps)))
+#    accuracy = tf.constant(1.0) - error_rate
+#    return cross_entropy_mean, accuracy
+
+
+
 def build_feed_dict(minibatcher, minibatch_size, N, feature_planes, onehot_moves):
     loaded_feature_planes, loaded_move_arrs = minibatcher.next_minibatch()
+
+    # approximately normalize inputs. maybe gives a fraction of a percent improvement in training errors, at least early on
+    # shift and rescaling calculated on KGS data using make_feature_planes_stones_3liberties_4history_ko
+    # haven't tested the difference between this and no normalization when using ELUs
+    #loaded_feature_planes = (loaded_feature_planes.astype(np.float32) - 0.154) * 2.77
+
+    # this normalization was worse than the above simple normalization (in my ELU test)
+    loaded_feature_planes = \
+        (loaded_feature_planes.astype(np.float32) 
+         - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
+         * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
+
     loaded_move_arrs = loaded_move_arrs.astype(np.int32) # BIT ME HARD.
     Features.apply_random_symmetries(loaded_feature_planes, loaded_move_arrs)
     loaded_move_indices = N * loaded_move_arrs[:,0] + loaded_move_arrs[:,1] 
@@ -36,7 +61,16 @@ def build_feed_dict(minibatcher, minibatch_size, N, feature_planes, onehot_moves
              onehot_moves: loaded_onehot_moves }
 
 
-def restore_from_checkpoint(sess, saver, train_dir):
+#def influence_build_feed_dict(minibatcher, minibatch_size, N, feature_planes, final_maps):
+#    assert False
+#    loaded_feature_planes, loaded_final_maps = minibatcher.next_minibatch()
+#    Features.apply_random_symmetries_influence(loaded_feature_planes, loaded_final_maps)
+#    assert minibatch_size == loaded_feature_planes.shape[0] == loaded_move_indices.shape[0]
+#    return { feature_planes: loaded_feature_planes.astype(np.float32),
+#             onehot_moves: loaded_final_maps.astype(np.float32) }
+
+
+def restore_from_checkpoint(sess, saver, ema_saver, train_dir):
     checkpoint_dir = os.path.join(train_dir, 'checkpoints')
     print "Trying to restore from checkpoint in dir", checkpoint_dir
     checkpoint = tf.train.get_checkpoint_state(checkpoint_dir)
@@ -45,16 +79,25 @@ def restore_from_checkpoint(sess, saver, train_dir):
         saver.restore(sess, checkpoint.model_checkpoint_path)
         step = int(checkpoint.model_checkpoint_path.split('/')[-1].split('-')[-1])
         print "Restored from checkpoint"
+
+        ema_dir = os.path.join(train_dir, 'moving_averages')
+        ema_checkpoint = tf.train.get_checkpoint_state(ema_dir)
+        if ema_checkpoint and ema_checkpoint.model_checkpoint_path:
+            print "Moving average checkpoint file is", ema_checkpoint.model_checkpoint_path
+            ema_saver.restore(sess, ema_checkpoint.model_checkpoint_path)
+            print "Restored moving averages from checkpoint"
+        else:
+            print "Failed to restore moving averages from checkpoint dir", ema_dir
     else:
         print "No checkpoint file found"
         assert False
     return step
 
-def optionally_restore_from_checkpoint(sess, saver, train_dir):
+def optionally_restore_from_checkpoint(sess, saver, ema_saver, train_dir):
     while True:
         response = raw_input("Restore from checkpoint [y/n]? ").lower()
         if response == 'y': 
-            return restore_from_checkpoint(sess, saver, train_dir)
+            return restore_from_checkpoint(sess, saver, ema_saver, train_dir)
         if response == 'n':
             return 0
 
@@ -73,10 +116,14 @@ def add_loss_summaries(total_loss, accuracy):
         tf.scalar_summary(l.op.name +' (raw)', l)
         tf.scalar_summary(l.op.name, loss_averages.average(l))
 
-    return loss_averages_op
+    # Make a Saver for the exponential moving averages
+    ema_variables = [loss_averages.average(op) for op in losses + [total_loss, accuracy_pct]]
+    ema_saver = tf.train.Saver(ema_variables)
+
+    return loss_averages_op, ema_saver
 
 def train_step(total_loss, accuracy, learning_rate):
-    loss_averages_op = add_loss_summaries(total_loss, accuracy)
+    loss_averages_op, ema_saver = add_loss_summaries(total_loss, accuracy)
 
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
@@ -99,7 +146,7 @@ def train_step(total_loss, accuracy, learning_rate):
     with tf.control_dependencies([apply_gradient_op]):
         train_op = tf.no_op(name='train')
 
-    return train_op
+    return train_op, ema_saver
 
 def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
@@ -125,7 +172,7 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
 
         logits = model.inference(feature_planes, N, Nfeat)
         total_loss, accuracy = loss_func(logits, onehot_moves, minibatch_size)
-        train_op = train_step(total_loss, accuracy, learning_rate_ph)
+        train_op, ema_saver = train_step(total_loss, accuracy, learning_rate_ph)
 
         saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=5, keep_checkpoint_every_n_hours=2.0)
 
@@ -158,14 +205,11 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
             summary_writer.add_summary(make_summary('validation_accuracy_percent', 100*mean_accuracy), step)
     
 
-        checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
-        
-
         if just_validate: # Just run the validation set once
             restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
-            step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
+            step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
             #minibatcher = RandomizingNpzMinibatcher(train_data_dir)
             minibatcher = GroupingRandomizingNpzMinibatcher(train_data_dir, Ngroup)
             while True:
@@ -199,6 +243,7 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
     
                 if step % 1000 == 0 and step != 0:
                     saver.save(sess, os.path.join(model.train_dir, "checkpoints", "model.ckpt"), global_step=step)
+                    ema_saver.save(sess, os.path.join(model.train_dir, "moving_averages", "moving_averages.ckpt"), global_step=step)
 
 
                 step += 1
@@ -235,7 +280,9 @@ if __name__ == "__main__":
     #model = Models.Conv12(N, Nfeat, minibatch_size, learning_rate=0.00003) # low learning rate for overnight run (and stability)
     #model = Models.MaddisonMinimal(N, Nfeat, minibatch_size, learning_rate=0.0003) 
     #model = Models.Conv6PosDep(N, Nfeat) 
-    model = Models.Conv8PosDep(N, Nfeat) 
+    #model = Models.Conv8PosDep(N, Nfeat) 
+    #model = Models.Conv10PosDep(N, Nfeat) 
+    model = Models.Conv10PosDepELU(N, Nfeat) 
     #model = Models.Conv12PosDep(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
 

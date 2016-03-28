@@ -49,13 +49,14 @@ class TFEngine(BaseEngine):
 
         # build the graph
         with tf.Graph().as_default():
-            self.feature_planes = tf.placeholder(tf.float32, shape=[None, self.model.N, self.model.N, self.model.Nfeat], name='feature_planes')
-            self.logits = model.inference(self.feature_planes, self.model.N, self.model.Nfeat)
-            saver = tf.train.Saver(tf.trainable_variables())
-            init = tf.initialize_all_variables()
-            self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
-            self.sess.run(init)
-            restore_from_checkpoint(self.sess, saver, os.path.join(model.train_dir, 'checkpoints'))
+            with tf.device('/cpu:0'):
+                self.feature_planes = tf.placeholder(tf.float32, shape=[None, self.model.N, self.model.N, self.model.Nfeat], name='feature_planes')
+                self.logits = model.inference(self.feature_planes, self.model.N, self.model.Nfeat)
+                saver = tf.train.Saver(tf.trainable_variables())
+                init = tf.initialize_all_variables()
+                self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+                self.sess.run(init)
+                restore_from_checkpoint(self.sess, saver, os.path.join(model.train_dir, 'checkpoints_original'))
 
 
     def name(self):

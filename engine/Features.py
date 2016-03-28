@@ -97,9 +97,11 @@ def make_legality_plane(array, board, play_color):
             if board.play_is_legal(x, y, play_color):
                 array[x,y] = 1
 
-def make_simple_ko_plane(array, board):
+def make_simple_ko_plane(array, board, play_color):
     if board.simple_ko_vertex:
-        array[board.simple_ko_vertex] = 1
+        x,y = board.simple_ko_vertex
+        if not board.play_is_legal(x, y, play_color):
+            array[x,y] = 1
 
 # us, them, empty, ones
 def make_feature_planes_stones(board, play_color):
@@ -177,7 +179,7 @@ def apply_random_symmetries(many_feature_planes, many_move_arrs):
             many_move_arrs[i,:] = many_move_arrs[i,::-1]
         assert 0 <= many_move_arrs[i,0] < N
         assert 0 <= many_move_arrs[i,1] < N
-        assert many_feature_planes[i, many_move_arrs[i,0], many_move_arrs[i,1], 2] == 1 # basic check, assumes plane #2 is Color.Empty
+        #assert many_feature_planes[i, many_move_arrs[i,0], many_move_arrs[i,1], 2] == 1 # basic check, assumes plane #2 is Color.Empty
 
 
 

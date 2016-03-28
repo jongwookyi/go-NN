@@ -26,7 +26,8 @@ import Models
 #engine = TFEngine("conv12", Models.Conv12(N=19, Nfeat=16))
 #engine = TFEngine("firstmovetest", Models.FirstMoveTest(19, 15))
 #engine = TFEngine("conv6posdep", Models.Conv6PosDep(N=19, Nfeat=15))
-engine = TFEngine("conv8posdep", Models.Conv8PosDep(N=19, Nfeat=15))
+#engine = TFEngine("conv8posdep", Models.Conv8PosDep(N=19, Nfeat=15))
+engine = TFEngine("conv10posdep", Models.Conv10PosDep(N=19, Nfeat=15))
 #engine = TFEngine("conv12posdep", Models.Conv12PosDep(N=19, Nfeat=15))
 
 gtp = GTP(engine, fclient)

@@ -57,6 +57,10 @@ def write_game_data(sgf, sgf_aftermath, writer, feature_maker, rank_allowed):
     while True:
         feature_planes = feature_maker(reader.board, reader.next_play_color())
         writer.push_example((feature_planes, final_map))
+        if reader.has_more():
+            reader.play_next_move()
+        else:
+            break
 
 def make_KGS_influence_data():
     N = 19
