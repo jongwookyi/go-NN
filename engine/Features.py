@@ -97,11 +97,9 @@ def make_legality_plane(array, board, play_color):
             if board.play_is_legal(x, y, play_color):
                 array[x,y] = 1
 
-def make_simple_ko_plane(array, board, play_color):
+def make_simple_ko_plane(array, board):
     if board.simple_ko_vertex:
-        x,y = board.simple_ko_vertex
-        if not board.play_is_legal(x, y, play_color):
-            array[x,y] = 1
+        array[board.simple_ko_vertex] = 1
 
 # us, them, empty, ones
 def make_feature_planes_stones(board, play_color):
