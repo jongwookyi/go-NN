@@ -29,6 +29,7 @@ def restore_from_checkpoint(sess, saver, ckpt_dir):
         assert False
 
 def softmax(E, temp):
+    #print "E =\n", E
     expE = np.exp(temp * (E - max(E))) # subtract max to avoid overflow
     return expE / np.sum(expE)
 
@@ -40,6 +41,45 @@ def sample_from(probs):
             return i
     assert False, "problem with sample_from" 
 
+def make_symmetry_batch(features):
+    assert len(features.shape) == 3
+    #print "features[:,:,1] =\n", features[:,:,1]
+    N = features.shape[0]
+    Nfeat = features.shape[2]
+    feature_batch = np.empty((8, N, N, Nfeat), dtype=features.dtype)
+    for s in xrange(8):
+        feature_batch[s,:,:,:] = features
+        Features.apply_symmetry_planes(feature_batch[s,:,:,:], s)
+        #print "feature_batch[%d,:,:,1] =\n" % s, feature_batch[s,:,:,1]
+    return feature_batch
+
+def print_plane(plane):
+    assert False
+    for y in xrange(plane.shape[0]):
+        for x in xrange(plane.shape[1]):
+            print "%7.3f" % plane[x,y],
+        print
+
+def print_planes(planes):
+    for p in xrange(planes.shape[0]):
+        print "PLANE", p
+        print_plane(planes[p,:,:])
+
+def average_logits_over_symmetries(logits, N):
+    #print "logits.shape =", logits.shape
+    assert logits.shape == (8, N*N)
+    logit_planes = logits.reshape((8, N, N))
+    #print "before inverting symmetries, logit_planes ="
+    #print_planes(logit_planes)
+    for s in xrange(8):
+        Features.invert_symmetry_plane(logit_planes[s,:,:], s)
+    #print "after inverting symmetries, logit planes ="
+    #print_planes(logit_planes)
+    mean_logits = logit_planes.mean(axis=0)
+    #print "mean_logits =\n"
+    #print_plane(mean_logits)
+    mean_logits = mean_logits.reshape((N*N,))
+    return mean_logits
 
 class TFEngine(BaseEngine):
     def __init__(self, eng_name, model):
@@ -70,20 +110,25 @@ class TFEngine(BaseEngine):
 
         #board_feature_planes = make_feature_planes(self.board, color)
         board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
-        board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
-        feed_dict = {self.feature_planes: board_feature_planes}
+        #board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
+        #feed_dict = {self.feature_planes: board_feature_planes}
+        feature_batch = make_symmetry_batch(board_feature_planes)
+        #print "feature_batch.shape =", feature_batch.shape
+        feed_dict = {self.feature_planes: feature_batch}
 
-        move_logits = self.sess.run(self.logits, feed_dict)
-        move_logits = move_logits.reshape((self.model.N * self.model.N,))
+        #move_logits = self.sess.run(self.logits, feed_dict)
+        #move_logits = move_logits.reshape((self.model.N * self.model.N,))
+        logit_batch = self.sess.run(self.logits, feed_dict)
+        move_logits = average_logits_over_symmetries(logit_batch, self.model.N)
         #print move_logits
         softmax_temp = 10.0
         move_probs = softmax(move_logits, softmax_temp)
 
-        for y in xrange(self.model.N):
-            for x in xrange(self.model.N):
-                ind = self.model.N * x + y 
-                print "%7.3f" % move_logits[ind],
-            print
+        #for y in xrange(self.model.N):
+        #    for x in xrange(self.model.N):
+        #        ind = self.model.N * x + y 
+        #        print "%7.3f" % move_logits[ind],
+        #    print
 
         # zero out illegal moves
         for x in xrange(self.model.N):
