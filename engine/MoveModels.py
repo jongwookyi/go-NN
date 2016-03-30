@@ -1,55 +1,18 @@
 import tensorflow as tf
-import math
-
-def conv(inputs, diameter, Nin, Nout, name):
-    fan_in = diameter * diameter * Nin
-    stddev = math.sqrt(2.0 / fan_in)
-    kernel = tf.Variable(tf.truncated_normal([diameter, diameter, Nin, Nout], stddev=stddev), name=name+'_kernel')
-    return tf.nn.conv2d(inputs, kernel, [1, 1, 1, 1], padding='SAME')
-
-def conv_uniform_bias(inputs, diameter, Nin, Nout, name):
-    bias = tf.Variable(tf.constant(0.0, shape=[Nout]), name=name+'_bias')
-    return conv(inputs, diameter, Nin, Nout, name) + bias
-
-def conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
-    bias = tf.Variable(tf.constant(0.0, shape=[N, N, Nout]), name=name+'_bias')
-    return conv(inputs, diameter, Nin, Nout, name) + bias
-
-def relu_conv_uniform_bias(inputs, diameter, Nin, Nout, name):
-    return tf.nn.relu(conv_uniform_bias(inputs, diameter, Nin, Nout, name))
-
-def relu_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
-    return tf.nn.relu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
-
-def ELU_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
-    return tf.nn.elu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
-
-def linear_layer(inputs, Nin, Nout):
-    stddev = math.sqrt(2.0 / Nin)
-    print "linear layer using stddev =", stddev
-    weights = tf.Variable(tf.truncated_normal([Nin, Nout], stddev=0.1))
-    bias = tf.Variable(tf.constant(0.1, shape=[Nout]))
-    out = tf.matmul(inputs, weights) + bias
-    return out
-
-def fully_connected_layer(inputs, Nin, Nout):
-    return tf.nn.relu(linear_layer(inputs, Nin, Nout))
-
+from Layers import *
 
 class Linear:
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_linear_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_linear_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
     def inference(self, feature_planes, N, Nfeat):
         flat_features = tf.reshape(feature_planes, [-1, N*N*Nfeat])
         logits = linear_layer(flat_features, N*N*Nfeat, N*N)
         return logits
 
-
-
 class SingleFull: # recommend 9x9, mbs=1000, adam, lr=0.003
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_single_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_single_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
     def inference(self, feature_planes, N, Nfeat):
         Nhidden = 1024
@@ -60,7 +23,7 @@ class SingleFull: # recommend 9x9, mbs=1000, adam, lr=0.003
 
 class Conv3Full: # recommend 9x9, mbs=1000, adam, lr=0.003
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv3_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_conv3_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
     def inference(self, feature_planes, N, Nfeat):
         NK = 32
@@ -75,7 +38,7 @@ class Conv3Full: # recommend 9x9, mbs=1000, adam, lr=0.003
 
 class Conv4Full: 
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv4_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_conv4_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
     def inference(self, feature_planes, N, Nfeat):
         NK = 64
@@ -91,7 +54,7 @@ class Conv4Full:
 
 class Conv5Full: 
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv5_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_conv5_full_N%d_mb%d_fe_%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
     def inference(self, feature_planes, N, Nfeat):
         NK = 128
@@ -108,7 +71,7 @@ class Conv5Full:
 
 class Conv8: 
     def __init__(self, N, Nfeat, minibatch_size=1000, learning_rate=0.0003):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv8_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_conv8_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
         self.N = N
         self.Nfeat = Nfeat
@@ -129,7 +92,7 @@ class Conv8:
 
 class Conv8Full: 
     def __init__(self, N, Nfeat, minibatch_size, learning_rate):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/ckpts_conv8_full_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/ckpts_conv8_full_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
         self.N = N
         self.Nfeat = Nfeat
@@ -152,7 +115,7 @@ class Conv8Full:
 # didn't get higher than ~33% on KGS :(
 class Conv12: # AlphaGo architecture
     def __init__(self, N, Nfeat, minibatch_size=1000, learning_rate=0.0003):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/ckpts_conv12_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/ckpts_conv12_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
         self.N = N
         self.Nfeat = Nfeat
@@ -180,7 +143,7 @@ class Conv12: # AlphaGo architecture
 # One difference is that they have two output planes, one for each color
 class MaddisonMinimal: 
     def __init__(self, N, Nfeat, minibatch_size=1000, learning_rate=0.0003):
-        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/checkpoints/maddison_minimal_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
+        self.checkpoint_dir = "/home/greg/coding/ML/go/NN/work/checkpoints/maddison_minimal_N%d_mb%d_fe%d" % (N, minibatch_size, Nfeat)
         self.learning_rate = learning_rate
         self.N = N
         self.Nfeat = Nfeat
@@ -195,7 +158,7 @@ class MaddisonMinimal:
 
 class Conv6PosDep: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv6posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv6posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -212,7 +175,7 @@ class Conv6PosDep:
 # Got to ~46.7% on KGS after 58K minibatches of 256 (~12 hours of training), NK=192, learning_rate=0.03
 class Conv8PosDep: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv8posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv8posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -231,7 +194,7 @@ class Conv8PosDep:
 
 class Conv10PosDep: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -256,9 +219,12 @@ class Conv10PosDep:
 # on KGS data using make_feature_planes_stones_3liberties_4history_ko
 # Using ReLUs, that centering transformation produces only a ~0.2% increase in training accuracy
 # which seems to be disappearing after 8K minibatches. But with ELUs it is more permanent?
+#
+# Reached ~52.5% on KGS after ~200K minibatches of 256, using featurewise normalization,
+# dropping the learning rate at the very end for a ~1.5% jump
 class Conv10PosDepELU: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv10posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -279,7 +245,7 @@ class Conv10PosDepELU:
 
 class Conv12PosDep: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/conv12posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv12posdep_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -303,7 +269,7 @@ class Conv12PosDep:
 
 class FirstMoveTest: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/first_move_test"
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/first_move_test"
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -312,23 +278,4 @@ class FirstMoveTest:
         return logits
 
 
-
-class InfluenceConv8PosDep:
-    def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/engine/train_dirs/influence_conv8posdep_N%d_fe%d" % (N, Nfeat)
-        self.N = N
-        self.Nfeat = Nfeat
-    def inference(self, feature_planes, N, Nfeat):
-        NK = 192
-        NKfirst = 192
-        conv1 = relu_conv_pos_dep_bias(feature_planes, 5, Nfeat, NKfirst, N, 'conv1')
-        conv2 = relu_conv_pos_dep_bias(conv1, 3, NKfirst, NK, N, 'conv2')
-        conv3 = relu_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
-        conv4 = relu_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
-        conv5 = relu_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
-        conv6 = relu_conv_pos_dep_bias(conv5, 3, NK, NK, N, 'conv6')
-        conv7 = relu_conv_pos_dep_bias(conv6, 3, NK, NK, N, 'conv7')
-        conv8 = conv_pos_dep_bias(conv7, 3, NK, 1, N, 'conv8') 
-        logits = tf.reshape(conv8, [-1, N*N])        
-        return logits # use with sigmoid and sigmoid_cross_entropy_with_logits
 

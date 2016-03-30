@@ -5,6 +5,27 @@ import math
 import sys
 import math
 
+def apply_grand_normalization(feature_planes, grand_mean, grand_rescaling_factor):
+    np.copyto(feature_planes, (feature_planes - grand_mean) * grand_rescaling_factor)
+
+# some parameters I measured on KGS for Features.make_feature_planes_stones_3liberties_4history_ko
+def apply_grand_normalization_A(feature_planes):
+    apply_grand_normalization(feature_planes, grand_mean=0.154, grand_rescaling_factor=2.77)
+
+
+def apply_featurewise_normalization(feature_planes, feature_means, feature_rescaling_factors):
+    np.copyto(feature_planes, (feature_planes - feature_means) * feature_rescaling_factors)
+
+# some parameters I measured on KGS for Features.make_feature_planes_stones_3liberties_4history_ko
+def apply_featurewise_normalization_B(feature_planes):
+    apply_featurewise_normalization(feature_planes,
+         feature_means=np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0]),
+         feature_rescaling_factors=np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10]))
+
+
+def get_svd_normalized_features(feature_planes, feature_means, whitening_matrix):
+    return np.dot(feature_planes - feature_means, whitening_matrix)
+
 
 
 def get_sample(npz_dir, Nfiles):
@@ -42,8 +63,6 @@ def compute_grand_normalization(sample):
     print "grand_variance =", grand_variance
     print "grand_resaling_factor =", grand_rescaling_factor
 
-def apply_grand_normalization(feature_planes, grand_mean, grand_rescaling_factor):
-    np.copyto(feature_planes, (feature_planes - grand_mean) * grand_rescaling_factor)
 
 def compute_featurewise_normalization(sample):
     feature_means = sample.mean(axis=0)
@@ -52,10 +71,6 @@ def compute_featurewise_normalization(sample):
     print "feature_means =\n", repr(feature_means)
     print "feature_variances =\n", repr(feature_variances)
     print "feature_rescaling_factors = \n", repr(feature_rescaling_factors)
-
-def apply_featurewise_normalization(feature_planes, feature_means, feature_rescaling_factors):
-    np.copyto(feature_planes, (feature_planes - feature_means) * feature_rescaling_factors)
-
 
 def compute_svd_normalization(samples, Ndiscard, max_rescale):
     # S is list of singular values in descending order
@@ -82,11 +97,6 @@ def compute_svd_normalization(samples, Ndiscard, max_rescale):
     print rescaling_factors
     print "whitening_matrix ="
     print repr(whitening_matrix)
-
-def get_svd_normalized_features(feature_planes, feature_means, whitening_matrix):
-    return np.dot(feature_planes - feature_means, whitening_matrix)
-
-
 
 def test_normalizations():
     np.set_printoptions(precision=3, linewidth=200)
@@ -155,96 +165,3 @@ if __name__ == '__main__':
     test_normalizations()
 
 
-"""
-npz_dir = '/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15-randomized-2'
-
-N = 19
-Nfeat = 15
-
-sum_of_sample_feature_means = np.zeros((Nfeat,))
-sum_of_sample_grand_means = 0.0
-
-sum_of_sample_feature_mean_squares = np.zeros((Nfeat,))
-sum_of_sample_grand_mean_squares = 0.0
-
-Nsamples = 100
-Nperfile = 128
-big_matrix = np.empty((Nsamples*Nperfile*N*N, Nfeat))
-
-
-    #features -= 0.154
-    #features *= 2.77
-
-    # using mean(ones) = 0.682 = 19^2 / 23^2, corresponding scaling factor is 1/sqrt(0.682(1-0.682)) = 2.148
-    #features -= np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])
-    #features *= np.array([2.8292491, 2.8175156, 2.1945873, 2.148, 10, 7.5041088, 3.0369993, 10, 7.5756124, 3.0131227, 10, 10, 10, 10, 10])
-
-    sum_of_sample_feature_means += features.mean(axis=(0,1,2))
-    sum_of_sample_grand_means += features.mean()
-
-    sum_of_sample_feature_mean_squares += np.square(features).mean(axis=(0,1,2))
-    sum_of_sample_grand_mean_squares += np.mean(np.square(features))
-
-
-feature_means = sum_of_sample_feature_means / Nsamples
-grand_mean = sum_of_sample_grand_means / Nsamples
-
-feature_variances = sum_of_sample_feature_mean_squares / Nsamples - np.square(feature_means)
-grand_variance = sum_of_sample_grand_mean_squares / Nsamples - grand_mean**2
-
-feature_rescaling_factors = np.reciprocal(np.sqrt(feature_variances))
-
-def print_arr(arr):
-    sys.stdout.write("[")
-    for i in xrange(arr.size):
-        sys.stdout.write("%.7f" % arr[i])
-        if i < arr.size - 1: sys.stdout.write(', ')
-    sys.stdout.write("]\n")
-
-
-print "feature_means =\n", feature_means
-print_arr(feature_means)
-print "feature_variances =\n", feature_variances
-print_arr(feature_variances)
-print "feature rescaling factors =\n", feature_rescaling_factors
-print_arr(feature_rescaling_factors)
-
-print
-print "grand_mean =\n", grand_mean
-print "variance =\n", grand_variance
-print "overall rescaling factor =\n", 1/math.sqrt(grand_variance)
-
-print
-print "SVD"
-print
-
-
-U, diagS, V = np.linalg.svd(big_matrix, full_matrices=False)
-
-scaledS = diagS / math.sqrt(big_matrix.shape[0])
-print "rescaled diagS =\n", scaledS
-
-print "V =\n", V
-
-
-
-
-print
-for f in xrange(Nfeat):
-    print "stddev(?) of SVD vector", f, "is", scaledS[f]
-    print "weighting on each feature is\n", V[f,:]
-
-
-invS = np.diag(np.reciprocal(scaledS))
-
-truncated_Nfeat = 12
-truncated_invS = invS[:, :truncated_Nfeat]
-
-print
-print "truncated_invS =\n", truncated_invS
-
-whitener = np.dot(V.T, truncated_invS)
-
-print
-print "whitener =\n", whitener
-"""

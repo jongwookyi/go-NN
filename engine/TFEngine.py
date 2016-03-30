@@ -98,7 +98,7 @@ class TFEngine(BaseEngine):
                 self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
                 self.sess.run(init)
                 #checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
-                checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/good_checkpoints/conv10posdepELU_N19_fe15"
+                checkpoint_dir = "/home/greg/coding/ML/go/NN/work/good_checkpoints/conv10posdepELU_N19_fe15"
                 restore_from_checkpoint(self.sess, saver, checkpoint_dir)
 
 

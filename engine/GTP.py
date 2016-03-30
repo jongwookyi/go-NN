@@ -36,7 +36,7 @@ class GTP:
         print "GTP: Sent error message to client: " + s
     
     def list_commands(self):
-        commands = ["protocol_version", "name", "version", "boardsize", "clearboard", "komi", "play", "genmove", "list_commands", "quit"]
+        commands = ["protocol_version", "name", "version", "boardsize", "clearboard", "komi", "play", "genmove", "list_commands", "quit", "gogui-analyze_commands"]
         self.tell_client("\n".join(commands))
 
     def quit(self):
@@ -89,6 +89,20 @@ class GTP:
             print "GTP: engine passed"
             self.tell_client("pass")
 
+    def gogui_analyze_commands(self):
+        print "GTP: got gogui-analyze_commands"
+        analyze_commands = ["string/Hello World/hello_world",
+                            "dboard/Show Influence Map/show_influence_map"]
+        self.tell_client("\n".join(analyze_commands))
+
+    def hello_world(self):
+        print "GTP: got hello_world"
+        self.tell_client("hello world!")
+
+    def show_influence_map(self):
+        print "GTP: got show_influence_map"
+        self.tell_client(("-1.0 "*19 + "\n")*19)
+
     def loop(self):
         while True:
             line = sys.stdin.readline().strip()
@@ -116,6 +130,12 @@ class GTP:
                 self.stone_played(line)
             elif line.startswith("genmove"): # We must generate a move
                 self.generate_move(line)
+            elif line.startswith("gogui-analyze_commands"): # List supported GoGui analyze commands
+                self.gogui_analyze_commands()
+            elif line.startswith("hello_world"): # hello world
+                self.hello_world()
+            elif line.startswith("show_influence_map"):
+                self.show_influence_map()
             else:
                 self.error_client("Don't recognize that command")
 

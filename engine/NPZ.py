@@ -17,7 +17,6 @@ class RandomizingWriter:
         self.filenum = 0
 
     def push_example(self, example):
-        print "pushing (before push, len(examples) = %d)" % len(self.examples)
         assert len(example) == len(self.names)
         for i in xrange(len(example)):
             assert example[i].dtype == self.dtypes[i]
@@ -26,15 +25,13 @@ class RandomizingWriter:
             self.write_npz_file()
 
     def drain(self):
-        print "draining..."
+        print "NPZ.RandomizingWriter: draining..."
         while len(self.examples) >= self.Nperfile:
             self.write_npz_file()
-        print "finished draining. %d examples left unwritten." % len(self.examples)
+        print "NPZ.RandomizingWriter: finished draining. %d examples left unwritten." % len(self.examples)
 
     def write_npz_file(self):
         assert len(self.examples) >= self.Nperfile
-
-        print "write_npz_file: len(self.examples) =", len(self.examples)
 
         # put Nperfile random examples at the end of the list
         for i in xrange(self.Nperfile):
@@ -56,7 +53,7 @@ class RandomizingWriter:
         del self.examples[-self.Nperfile:]
 
         filename = os.path.join(self.out_dir, "examples.%d.%d" % (self.Nperfile, self.filenum))
-        print "writing", filename
+        #print "NPZ.RandomizingWriter: writing", filename
         np.savez_compressed(filename, **save_dict)
         self.filenum += 1
 
@@ -79,12 +76,12 @@ class RandomizingLoader:
     def __init__(self, npz_dir):
         self.filename_queue = None
         self.npz_dir = npz_dir
-    def next_minibatch(self):
+    def next_minibatch(self, names):
         if not self.filename_queue:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
             random.shuffle(self.filename_queue)
             print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
-        return read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
+        return read_npz(self.filename_queue.pop(), names)
 
 
 class GroupingRandomizingLoader:

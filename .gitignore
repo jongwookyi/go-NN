@@ -4,12 +4,5 @@
 *.npz
 *.swp
 data/
-log*.txt
-engine/logs/*
-engine/checkpoints/*
-lr.txt
-momentum.txt
 play/
-engine/train_dirs/
-engine/good_checkpoints/
-engine/notes.txt
+work/

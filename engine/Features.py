@@ -1,8 +1,9 @@
 #!/usr/bin/python
+import numpy as np
 import os
 import os.path
 import random
-from SGFParser import *
+from Board import *
 
 def make_color_plane(array, board, color):
     np.copyto(array, np.equal(board.vertices, color))
@@ -163,6 +164,7 @@ def make_feature_planes_stones_3liberties_4history_ko_4captures(board, play_colo
     make_capture_count_planes(feature_planes[:,:,15:19], board, max_captures, play_color)
     return feature_planes
 
+# needs to be rewritten
 class FeatureTester:
     def __init__(self, N):
         self.N = N
@@ -248,22 +250,6 @@ class FeatureTester:
         self.player.process(property_name, property_data)
 
 
-def test_features_on_KGS():
-    base_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs"
-    print "Making list of SGFs..."
-    all_sgfs = []
-    for period_dir in os.listdir(base_dir):
-        for sgf_file in os.listdir(os.path.join(base_dir, period_dir)):
-            filename = os.path.join(base_dir, period_dir, sgf_file)
-            all_sgfs.append(filename)
-    random.shuffle(all_sgfs)
-
-    for sgf in all_sgfs:
-        parse_SGF(sgf, FeatureTester(19))
-
-
-if __name__ == "__main__":
-    test_features_on_KGS()
 
 
 

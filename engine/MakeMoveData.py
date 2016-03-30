@@ -124,6 +124,7 @@ def make_move_prediction_data(sgf_list, N, Nfeat, out_dir, feature_maker):
 
 def make_KGS_sets():
     # TODO
+    pass
 
 class TrainingDataWriter:
     def __init__(self, N, out_dir, minibatch_size, feature_maker, Nfeat, rank_allowed):
