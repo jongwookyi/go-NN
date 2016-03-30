@@ -5,7 +5,7 @@ from Board import *
 READING_NAME = 1
 READING_DATA = 2
 
-separators = set(['(', ')', ' ', '\n', '\t', ';'])
+separators = set(['(', ')', ' ', '\n', '\r', '\t', ';'])
 
 properties_taking_lists = set(['AB', # add black stone (handicap)
                                'AW', # add white stone (handicap)
@@ -110,10 +110,11 @@ class DebugProcessor:
 """
 
 def test_SGFParser():
-    sgf = "../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf"
+    #sgf = "../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf"
+    sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/modern_games/2007/2007-08-21g.sgf"
     parser = SGFParser(sgf)
     for property_name,  property_data in parser:
-        print "%s = %s" % (property_name, property_data)
+        print "\"%s\" = \"%s\"" % (property_name, property_data)
 
 
 class SGFReader:
@@ -140,6 +141,8 @@ class SGFReader:
                 self.black_rank = property_data
             elif property_name == "WR": # white rank
                 self.white_rank = property_data
+            elif property_name == "RE": # result
+                self.result = property_data
 
         for (x,y), color in self.initial_stones:
             self.board.play_stone(x, y, color)
@@ -272,8 +275,8 @@ def test_PrintingProcessor():
     #parse_SGF("/home/greg/coding/ML/go/NN/data/CGOS/9x9/SGFs/2015/11/13/2412.sgf", processor)
 
 if __name__ == "__main__":
-    #test_SGFParser()
-    test_SGFReader()
+    test_SGFParser()
+    #test_SGFReader()
 
 
 

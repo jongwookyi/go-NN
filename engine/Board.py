@@ -183,6 +183,20 @@ class Board:
         print
 
 
+def string_from_board(board):
+    chars = { Color.Empty:'x', Color.Black:'B', Color.White:'W' }
+    return ''.join(chars[board[x,y]] for y in xrange(board.N) for x in xrange(board.N))
+
+def set_board_from_string(board, s):
+    assert len(s) == board.N * board.N
+    colors = { 'x':Color.Empty, 'B':Color.Black, 'W':Color.White }
+    ind = 0
+    board.clear()
+    for y in xrange(board.N):
+        for x in xrange(board.N):
+            board[x,y] = colors[s[ind]]
+            ind += 1
+
 
 def show_sequence(board, moves, first_color):
     board.clear()
@@ -227,112 +241,3 @@ if __name__ == "__main__":
 
 
 
-"""
-class Board:
-    def __init__(self, N):
-        self.N = N
-        self.clear()
-
-    def clear(self):
-        self.vertices = np.empty((self.N, self.N), dtype=np.int32)
-        self.vertices.fill(Color.Empty)
-        self.prev_vertices = np.full_like(self.vertices, Color.Empty)
-        self.prev_prev_vertices = np.full_like(self.vertices, Color.Empty)
-        self.move_list = []
-
-    def __getitem__(self, index):
-        return self.vertices[index]
-
-    def is_on_board(self, x, y):
-        return x >= 0 and x < self.N and y >= 0 and y < self.N
-
-    def check_group_liberties(self, start_x, start_y, capture=False):
-        group_xys = [(start_x, start_y)]
-        visited = np.zeros((self.N, self.N), dtype=np.bool_) 
-        visited[start_x, start_y] = True
-        group_color = self.vertices[start_x, start_y]
-        assert group_color != Color.Empty
-
-        i = 0
-        while i < len(group_xys):
-            x,y = group_xys[i]
-            i += 1
-            for dx,dy in dxdys:
-                adj_x, adj_y = x+dx, y+dy
-                if self.is_on_board(adj_x, adj_y):
-                    adj_color = self.vertices[adj_x, adj_y]
-                    if adj_color == Color.Empty:
-                        return True
-                    elif adj_color == group_color and not visited[adj_x, adj_y]:
-                        group_xys.append((adj_x, adj_y))
-                        visited[adj_x, adj_y] = True
-        # no liberties
-        if capture:
-            for x,y in group_xys:
-                self.vertices[x,y] = Color.Empty
-        return False
-
-
-    # returns whether the move was legal
-    def play_stone(self, x, y, color, just_testing=False, check_legality=True):
-        assert color == Color.White or color == Color.Black
-        if self.vertices[x, y] != Color.Empty: return False
-        self.vertices[x, y] = color
-
-        made_a_capture = False
-        for dx,dy in dxdys:
-            adj_x, adj_y = x+dx, y+dy
-            if self.is_on_board(adj_x, adj_y):
-                if self.vertices[adj_x, adj_y] == flipped_color[color]:
-                    if not self.check_group_liberties(adj_x, adj_y, capture=True):
-                        made_a_capture = True
-
-        # check if the new board state repeats a previous state, which is illegal
-        if check_legality:
-            # check for simple ko. KGS games seem to allow superko
-            if np.array_equal(self.prev_prev_vertices, self.vertices):
-                return False
-
-            # check for self-capture
-            if not made_a_capture:
-                if not self.check_group_liberties(x, y):
-                    return False
-
-        if not just_testing:
-            np.copyto(self.prev_prev_vertices, self.prev_vertices)
-            np.copyto(self.prev_vertices, self.vertices)
-            self.move_list.append((x,y))
-
-        return True
-
-    def save(self):
-        self.saved_vertices = np.copy(self.vertices)
-
-    def restore(self):
-        self.vertices = self.saved_vertices
-
-    def play_is_legal(self, x, y, color):
-        self.save()
-        legal = self.play_color(x, y, color, just_testing=True)
-        self.restore()
-        return legal
-
-    def flip_colors(self):
-        for x in range(self.N):
-            for y in range(self.N):
-                self.vertices[x,y] = flipped_color[self.vertices[x,y]]
-
-    def show(self):
-        color_strings = { 
-                Color.Empty: '.',
-                Color.Black: '\033[31m0\033[0m',
-                Color.White: '\033[37m0\033[0m' }
-        for x in range(self.N): print "=",
-        print
-        for y in range(self.N):
-            for x in range(self.N):
-                print color_strings[self.vertices[x,y]],
-            print
-        for x in range(self.N): print "=",
-        print
-"""
