@@ -3,7 +3,7 @@ import numpy as np
 import random
 import os
 
-class RandomizingNpzWriter:
+class RandomizingWriter:
     def __init__(self, out_dir, names, shapes, dtypes, Nperfile, buffer_len):
         assert buffer_len >= Nperfile
         assert len(names) == len(shapes) == len(dtypes)
@@ -59,6 +59,55 @@ class RandomizingNpzWriter:
         print "writing", filename
         np.savez_compressed(filename, **save_dict)
         self.filenum += 1
+
+
+def read_npz(filename, names):
+    npz = np.load(filename)
+    ret = tuple(npz[name] for name in names)
+    npz.close()
+    return ret
+
+class Loader:
+    def __init__(self, npz_dir):
+        self.filename_queue = [os.path.join(npz_dir, f) for f in os.listdir(npz_dir)]
+    def has_more(self):
+        return len(self.filename_queue) > 0
+    def next_minibatch(self):
+        return read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
+
+class RandomizingLoader:
+    def __init__(self, npz_dir):
+        self.filename_queue = None
+        self.npz_dir = npz_dir
+    def next_minibatch(self):
+        if not self.filename_queue:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+        return read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
+
+
+class GroupingRandomizingLoader:
+    def __init__(self, npz_dir, Ngroup):
+        self.filename_queue = []
+        self.npz_dir = npz_dir
+        self.Ngroup = Ngroup
+    def next_minibatch(self):
+        if len(self.filename_queue) < self.Ngroup:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+        components = [read_npz(self.filename_queue.pop(), ('feature_planes', 'moves')) for i in xrange(self.Ngroup)]
+        Nperfile = components[0][0].shape[0]
+        N = components[0][0].shape[1]
+        Nfeat = components[0][0].shape[3]
+        grouped_features = np.empty((Nperfile * self.Ngroup, N, N, Nfeat), dtype=np.int8)
+        grouped_moves = np.empty((Nperfile * self.Ngroup, 2), dtype=np.int8)
+        for i in xrange(self.Ngroup):
+            start = i * Nperfile
+            end = (i+1) * Nperfile
+            grouped_features[start:end,:,:,:], grouped_moves[start:end,:] = components[i]
+        return grouped_features, grouped_moves
 
 
 if __name__ == '__main__':

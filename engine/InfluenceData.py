@@ -71,7 +71,7 @@ def make_KGS_influence_data():
             names=['feature_planes', 'final_map'],
             shapes=[(N,N,Nfeat), (N,N)],
             dtypes=[np.int8, np.int8],
-            Nperfile=128, buffer_len=20000)
+            Nperfile=128, buffer_len=50000)
 
     rank_allowed = lambda rank: rank in ['1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d',
                                          '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p']

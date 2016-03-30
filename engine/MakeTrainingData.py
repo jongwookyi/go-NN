@@ -56,50 +56,6 @@ def test_feature_planes():
         board.play_stone(x, y, play_color)
         play_color = flipped_color[play_color]
 
-class PlaneTester:
-    def __init__(self, N):
-        self.player = PlayingProcessor(N)
-
-    def begin_game(self):
-        self.player.begin_game()
-    
-    def end_game(self):
-        self.player.end_game()
-
-    def process(self, property_name, property_data):
-        self.player.process(property_name, property_data)
-        if property_name == "W" or property_name == "B":
-            self.player.board.show()
-            #print "LIBERTY PLANES FROM WHITE'S PERSPECTIVE:"
-            #Nplanes = 8
-            #liberty_planes = np.zeros((self.player.board.N, self.player.board.N, Nplanes), np.int8)
-            #make_liberty_count_planes(liberty_planes, self.player.board, Nplanes, Color.White)
-            #show_all_planes(liberty_planes)
-            print "HISTORY PLANES:"
-            Nplanes = 4
-            history_planes = np.zeros((self.player.board.N, self.player.board.N, Nplanes), np.int8)
-            make_history_planes(history_planes, self.player.board, Nplanes)
-            show_all_planes(history_planes)
-
-def run_PlaneTester():
-    sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2006/2006-02-10-11.sgf"
-    parse_SGF(sgf, PlaneTester(19))
-
-def write_minibatch(filename, all_feature_planes, all_moves):
-    assert all_feature_planes.dtype == np.int8
-    assert all_moves.dtype == np.int8
-    assert len(all_feature_planes.shape) == 4
-    assert len(all_moves.shape) == 2
-    assert all_feature_planes.shape[0] == all_moves.shape[0]
-    #print "writing %s" % filename
-    np.savez_compressed(filename, feature_planes=all_feature_planes, moves=all_moves)
-
-def read_minibatch(filename):
-    npz = np.load(filename)
-    ret = (npz['feature_planes'], npz['moves'])
-    npz.close()
-    return ret
-
 def test_minibatch_read_write():
     N = 5
     board = Board(N)
@@ -131,6 +87,43 @@ def test_minibatch_read_write():
         print "in example %d" % i
         show_feature_planes_and_move(in_feature_planes[i,:,:,:], in_moves[i,:])
 
+
+def write_game_data(sgf, writer, feature_maker, rank_allowed):
+    reader = SGFReader(sgf)
+
+    if not rank_allowed(reader.black_rank) or not rank_allowed(reader.white_rank):
+        print "skipping game b/c of disallowed rank. ranks are %s, %s" % (reader.black_rank, reader.white_rank)
+        return
+
+    while reader.has_more():
+        vertex, color = reader.peek_next_move()
+        if vertex: # if now pass:
+            feature_planes = feature_maker(reader.board, reader.next_play_color())
+            x, y = vertex
+            move_arr = make_move_arr(x, y)
+            writer.push_example((feature_planes, move_arr))
+        reader.play_next_move()
+
+def make_move_prediction_data(sgf_list, N, Nfeat, out_dir, feature_maker):
+    sgf_list = list(sgf_list) # make local copy
+    random.shuffle(sgf_list)
+
+    writer = RandomizingNpzWriter(out_dir=out_dir,
+            names=['feature_planes', 'moves'],
+            shapes=[(N,N,Nfeat), (N,N)],
+            dtypes=[np.int8, np.int8],
+            Nperfile=128, buffer_len=50000)
+
+    num_games = 0
+    for sgf in sgf_list:
+        write_game_data(sgf, writer, feature_maker, rank_allowed)
+        num_games += 1
+        if num_games % 100 == 0: print "num_games =", num_games
+
+    writer.drain()
+
+def make_KGS_sets():
+    # TODO
 
 class TrainingDataWriter:
     def __init__(self, N, out_dir, minibatch_size, feature_maker, Nfeat, rank_allowed):

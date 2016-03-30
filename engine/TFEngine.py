@@ -4,6 +4,7 @@ import random
 import os
 from Engine import *
 import Features
+import Symmetry
 
 #def build_feed_dict(mb_filename, feature_planes, onehot_moves):
 #    N = 9
@@ -49,7 +50,7 @@ def make_symmetry_batch(features):
     feature_batch = np.empty((8, N, N, Nfeat), dtype=features.dtype)
     for s in xrange(8):
         feature_batch[s,:,:,:] = features
-        Features.apply_symmetry_planes(feature_batch[s,:,:,:], s)
+        Symmetry.apply_symmetry_planes(feature_batch[s,:,:,:], s)
         #print "feature_batch[%d,:,:,1] =\n" % s, feature_batch[s,:,:,1]
     return feature_batch
 
@@ -72,7 +73,7 @@ def average_logits_over_symmetries(logits, N):
     #print "before inverting symmetries, logit_planes ="
     #print_planes(logit_planes)
     for s in xrange(8):
-        Features.invert_symmetry_plane(logit_planes[s,:,:], s)
+        Symmetry.invert_symmetry_plane(logit_planes[s,:,:], s)
     #print "after inverting symmetries, logit planes ="
     #print_planes(logit_planes)
     mean_logits = logit_planes.mean(axis=0)
@@ -96,7 +97,9 @@ class TFEngine(BaseEngine):
                 init = tf.initialize_all_variables()
                 self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
                 self.sess.run(init)
-                restore_from_checkpoint(self.sess, saver, os.path.join(model.train_dir, 'checkpoints_original'))
+                #checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
+                checkpoint_dir = "/home/greg/coding/ML/go/NN/engine/good_checkpoints/conv10posdepELU_N19_fe15"
+                restore_from_checkpoint(self.sess, saver, checkpoint_dir)
 
 
     def name(self):
@@ -114,6 +117,13 @@ class TFEngine(BaseEngine):
         #feed_dict = {self.feature_planes: board_feature_planes}
         feature_batch = make_symmetry_batch(board_feature_planes)
         #print "feature_batch.shape =", feature_batch.shape
+
+        feature_batch = \
+            (feature_batch.astype(np.float32) 
+             - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
+            * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
+
+
         feed_dict = {self.feature_planes: feature_batch}
 
         #move_logits = self.sess.run(self.logits, feed_dict)

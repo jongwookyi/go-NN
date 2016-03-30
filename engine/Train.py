@@ -8,8 +8,9 @@ import random
 import time
 from datetime import datetime
 import Models
-from Minibatcher import *
 import Features
+import NPZ
+import Symmetry
 
 
 def loss_func(logits, onehot_moves, minibatch_size):
@@ -37,22 +38,22 @@ def loss_func(logits, onehot_moves, minibatch_size):
 
 
 
-def build_feed_dict(minibatcher, minibatch_size, N, feature_planes, onehot_moves):
-    loaded_feature_planes, loaded_move_arrs = minibatcher.next_minibatch()
+def build_feed_dict(loader, minibatch_size, N, feature_planes, onehot_moves):
+    loaded_feature_planes, loaded_move_arrs = loader.next_minibatch()
 
     # approximately normalize inputs. maybe gives a fraction of a percent improvement in training errors, at least early on
     # shift and rescaling calculated on KGS data using make_feature_planes_stones_3liberties_4history_ko
     # haven't tested the difference between this and no normalization when using ELUs
     #loaded_feature_planes = (loaded_feature_planes.astype(np.float32) - 0.154) * 2.77
 
-    # this normalization was worse than the above simple normalization (in my ELU test)
+    # mean subtraction and unit variance rescaling for make_feature_planes_stones_3liberties_4history_ko from KGS data
     loaded_feature_planes = \
         (loaded_feature_planes.astype(np.float32) 
          - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
          * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
 
     loaded_move_arrs = loaded_move_arrs.astype(np.int32) # BIT ME HARD.
-    Features.apply_random_symmetries(loaded_feature_planes, loaded_move_arrs)
+    Symmetry.apply_random_symmetries(loaded_feature_planes, loaded_move_arrs)
     loaded_move_indices = N * loaded_move_arrs[:,0] + loaded_move_arrs[:,1] 
     assert minibatch_size == loaded_feature_planes.shape[0] == loaded_move_indices.shape[0]
     loaded_onehot_moves = np.zeros((minibatch_size, N*N), dtype=np.float32)
@@ -122,12 +123,13 @@ def add_loss_summaries(total_loss, accuracy):
 
     return loss_averages_op, ema_saver
 
-def train_step(total_loss, accuracy, learning_rate):
+def train_step(total_loss, accuracy, learning_rate, momentum=None):
     loss_averages_op, ema_saver = add_loss_summaries(total_loss, accuracy)
 
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
-        opt = tf.train.GradientDescentOptimizer(learning_rate)
+        #opt = tf.train.GradientDescentOptimizer(learning_rate)
+        opt = tf.train.MomentumOptimizer(learning_rate, momentum)
         #opt = tf.train.AdamOptimizer(learning_rate)
         grads = opt.compute_gradients(total_loss)
 
@@ -151,28 +153,28 @@ def train_step(total_loss, accuracy, learning_rate):
 def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
 
-def read_learning_rate(default_lr):
+def read_float_from_file(filename, default):
     try: 
-        with open('lr.txt', 'r') as f:
+        with open(filename, 'r') as f:
             lr = float(f.read().strip())
             return lr
     except:
-        print "failed to read learning rate"
+        print "failed to read from file", filename, "; using default value", default
         return default_lr
 
-def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, val_data_dir, just_validate=False):
-    default_learning_rate = learning_rate
+def train_model(model, N, Nfeat, minibatch_size, train_data_dir, val_data_dir, just_validate=False):
     Ngroup = 2
     minibatch_size *= 2
     with tf.Graph().as_default():
         # build the graph
         learning_rate_ph = tf.placeholder(tf.float32)
+        momentum_ph = tf.placeholder(tf.float32)
         feature_planes = tf.placeholder(tf.float32, shape=[None, N, N, Nfeat], name='feature_planes')
         onehot_moves = tf.placeholder(tf.float32, shape=[None, N*N], name='onehot_moves')
 
         logits = model.inference(feature_planes, N, Nfeat)
         total_loss, accuracy = loss_func(logits, onehot_moves, minibatch_size)
-        train_op, ema_saver = train_step(total_loss, accuracy, learning_rate_ph)
+        train_op, ema_saver = train_step(total_loss, accuracy, learning_rate_ph, momentum_ph)
 
         saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=5, keep_checkpoint_every_n_hours=2.0)
 
@@ -185,15 +187,15 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
         summary_writer = tf.train.SummaryWriter(os.path.join(model.train_dir, 'summaries', datetime.now().strftime('%Y%m%d-%H%M%S')), graph_def=sess.graph_def)
 
         def run_validation(): # run the validation set
-            val_minibatcher = NpzMinibatcher(val_data_dir)
+            val_loader = NPZ.Loader(val_data_dir)
             val_minibatch_size = 128
             mean_loss = 0.0
             mean_accuracy = 0.0
             mb_num = 0
             print "Starting validation..."
-            while val_minibatcher.has_more():
+            while val_loader.has_more():
                 if mb_num % 100 == 0: print "validation minibatch #%d (val_minibatch_size = %d)" % (mb_num, val_minibatch_size)
-                feed_dict = build_feed_dict(val_minibatcher, val_minibatch_size, N, feature_planes, onehot_moves)
+                feed_dict = build_feed_dict(val_loader, val_minibatch_size, N, feature_planes, onehot_moves)
                 loss_value, accuracy_value = sess.run([total_loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
                 mean_accuracy += accuracy_value
@@ -210,20 +212,23 @@ def train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, 
             run_validation()
         else: # Run the training loop
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
-            #minibatcher = RandomizingNpzMinibatcher(train_data_dir)
-            minibatcher = GroupingRandomizingNpzMinibatcher(train_data_dir, Ngroup)
+            #loader = NPZ.RandomizingLoader(train_data_dir)
+            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup)
             while True:
                 if step % 10000 == 0 and step != 0: 
                     run_validation()
 
                 if step % 10 == 0:
-                    learning_rate = read_learning_rate(default_learning_rate)
+                    learning_rate = read_float_from_file('lr.txt', default=0.1)
+                    momentum = read_float_from_file('momentum.txt', default=0.9)
                     summary_writer.add_summary(make_summary('learningrate', learning_rate), step)
+                    summary_writer.add_summary(make_summary('momentum', momentum), step)
 
                 start_time = time.time()
-                feed_dict = build_feed_dict(minibatcher, minibatch_size, N, feature_planes, onehot_moves)
+                feed_dict = build_feed_dict(loader, minibatch_size, N, feature_planes, onehot_moves)
                 load_time = time.time() - start_time
                 feed_dict[learning_rate_ph] = learning_rate
+                feed_dict[momentum_ph] = momentum
     
                 start_time = time.time()
                 if step % 10 == 0:
@@ -286,6 +291,5 @@ if __name__ == "__main__":
     #model = Models.Conv12PosDep(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
 
-    learning_rate = 0.1
-    train_model(model, N, Nfeat, minibatch_size, learning_rate, train_data_dir, val_data_dir, just_validate=False)
+    train_model(model, N, Nfeat, minibatch_size, train_data_dir, val_data_dir, just_validate=False)
 

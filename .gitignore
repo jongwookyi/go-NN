@@ -3,8 +3,13 @@
 *.tar.bz2
 *.npz
 *.swp
-data/KGS/downloads/
-data/KGS/SGFs/
+data/
 log*.txt
 engine/logs/*
 engine/checkpoints/*
+lr.txt
+momentum.txt
+play/
+engine/train_dirs/
+engine/good_checkpoints/
+engine/notes.txt
