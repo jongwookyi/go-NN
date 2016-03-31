@@ -89,7 +89,7 @@ class GroupingRandomizingLoader:
         self.filename_queue = []
         self.npz_dir = npz_dir
         self.Ngroup = Ngroup
-    def next_minibatch(self):
+    def next_minibatch(self, names):
         if len(self.filename_queue) < self.Ngroup:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
             random.shuffle(self.filename_queue)

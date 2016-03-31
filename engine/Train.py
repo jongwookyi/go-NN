@@ -74,7 +74,9 @@ def train_step(total_loss, accuracy, learning_rate, momentum=None):
     # Compute gradients.
     with tf.control_dependencies([loss_averages_op]):
         #opt = tf.train.GradientDescentOptimizer(learning_rate)
+        #print "USING GRADIENT DESCENT"
         opt = tf.train.MomentumOptimizer(learning_rate, momentum)
+        print "USING MOMENTUM"
         #opt = tf.train.AdamOptimizer(learning_rate)
 
         grads = opt.compute_gradients(total_loss)
@@ -107,6 +109,11 @@ def read_float_from_file(filename, default):
     except:
         print "failed to read from file", filename, "; using default value", default
         return default
+
+def append_line_to_file(filename, s):
+    with open(filename, 'a') as f:
+        f.write(s)
+        f.write('\n')
 
 def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, train_data_dir, val_data_dir, just_validate=False):
     with tf.Graph().as_default():
@@ -149,14 +156,15 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             summary_writer.add_summary(make_summary('validation_loss', mean_loss), step)
             summary_writer.add_summary(make_summary('validation_accuracy_percent', 100*mean_accuracy), step)
     
+        last_training_loss = None
 
         if just_validate: # Just run the validation set once
             restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
-            loader = NPZ.RandomizingLoader(train_data_dir)
-            #loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=2)
+            #loader = NPZ.RandomizingLoader(train_data_dir)
+            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=4)
             while True:
                 if False: #step % 10000 == 0 and step != 0: 
                     run_validation()
@@ -202,20 +210,20 @@ if __name__ == "__main__":
     N = 19
     Nfeat = 15
     
-    """
     #model = Models.Conv6PosDep(N, Nfeat) 
     #model = Models.Conv8PosDep(N, Nfeat) 
     #model = Models.Conv10PosDep(N, Nfeat) 
-    model = MoveModels.Conv10PosDepELU(N, Nfeat) 
-    #model = Models.Conv12PosDep(N, Nfeat) 
+    #model = MoveModels.Conv10PosDepELU(N, Nfeat) 
+    model = MoveModels.Conv12PosDepELU(N, Nfeat) 
+    #model = MoveModels.Conv4PosDepELU(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
     train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
     val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
     build_feed_dict = MoveTraining.build_feed_dict
     loss_func = MoveTraining.loss_func
     normalization = Normalization.apply_featurewise_normalization_B
-    """
 
+    """
     #model = InfluenceModels.Conv4PosDep(N, Nfeat)
     model = InfluenceModels.Conv12PosDepELU(N, Nfeat)
     train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/influence/examples/stones_3lib_4hist_ko_Nf15/train"
@@ -223,6 +231,7 @@ if __name__ == "__main__":
     build_feed_dict = InfluenceTraining.build_feed_dict
     loss_func = InfluenceTraining.loss_func
     normalization = Normalization.apply_featurewise_normalization_B
+    """
 
     print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
 
