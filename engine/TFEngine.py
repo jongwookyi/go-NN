@@ -109,7 +109,7 @@ class TFEngine(BaseEngine):
         return "1.0"
 
     def pick_move(self, color):
-        if self.opponent_passed: return None # Pass if opponent passes????
+        #if self.opponent_passed: return None # Pass if opponent passes????
 
         #board_feature_planes = make_feature_planes(self.board, color)
         board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
