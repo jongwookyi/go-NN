@@ -9,7 +9,7 @@ def color_from_str(s):
     else: return Color.Black
 
 def coords_from_str(s):
-    x = ord(s[0]) - ord('A')
+    x = ord(s[0].upper()) - ord('A')
     if x >= 9: x -= 1
     y = int(s[1:])
     y -= 1
@@ -36,7 +36,9 @@ class GTP:
         print "GTP: Sent error message to client: " + s
     
     def list_commands(self):
-        commands = ["protocol_version", "name", "version", "boardsize", "clearboard", "komi", "play", "genmove", "list_commands", "quit", "gogui-analyze_commands"]
+        commands = ["protocol_version", "name", "version", "boardsize", "clear_board", "komi", "play", "genmove", "list_commands", "quit", "gogui-analyze_commands", "kgs-game_over"]
+        if self.engine.supports_final_status_list():
+            commands.append("final_status_list")
         self.tell_client("\n".join(commands))
 
     def quit(self):
@@ -103,6 +105,13 @@ class GTP:
         print "GTP: got show_influence_map"
         self.tell_client(("-1.0 "*19 + "\n")*19)
 
+    def game_over(self):
+        exit(0)
+
+    def send_final_status_list(self, line):
+        status = line.split()[-1]
+        self.tell_client(self.engine.final_status_list(status))
+
     def loop(self):
         while True:
             line = sys.stdin.readline().strip()
@@ -136,6 +145,10 @@ class GTP:
                 self.hello_world()
             elif line.startswith("show_influence_map"):
                 self.show_influence_map()
+            elif line.startswith("kgs-game_over"):
+                self.game_over()
+            elif line.startswith("final_status_list"):
+                self.send_final_status_list(line)
             else:
                 self.error_client("Don't recognize that command")
 

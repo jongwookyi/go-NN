@@ -15,6 +15,7 @@ sys.stdout = sys.stderr = open(logfile, 'w', 0) # 0 = unbuffered
 from GTP import GTP
 from Engine import IdiotEngine
 from TFEngine import TFEngine
+from KGSEngine import KGSEngine
 import MoveModels
 from Book import PositionRecord
 from Book import MoveRecord
@@ -31,8 +32,10 @@ from Book import MoveRecord
 #engine = TFEngine("conv8posdep", Models.Conv8PosDep(N=19, Nfeat=15))
 #engine = TFEngine("conv10posdep", Models.Conv10PosDep(N=19, Nfeat=15))
 #engine = TFEngine("conv10posdep", Models.Conv10PosDep(N=19, Nfeat=15))
-engine = TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15))
+###engine = TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15))
 #engine = TFEngine("conv12posdep", Models.Conv12PosDep(N=19, Nfeat=15))
+
+engine = KGSEngine(TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15)))
 
 gtp = GTP(engine, fclient)
 

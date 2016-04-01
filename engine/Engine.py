@@ -50,6 +50,9 @@ class BaseEngine(object):
     def quit(self):
         pass
 
+    def supports_final_status_list(self):
+        return False
+
 
 class IdiotEngine(BaseEngine):
     def __init__(self):

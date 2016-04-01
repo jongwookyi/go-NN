@@ -108,6 +108,7 @@ class TFEngine(BaseEngine):
         self.eng_name = eng_name
         self.model = model
         self.book = Book.load_GoGoD_book()
+        #self.book = None
 
         # build the graph
         with tf.Graph().as_default():
@@ -132,11 +133,14 @@ class TFEngine(BaseEngine):
     def pick_move(self, color):
         if self.opponent_passed: return None # Pass if opponent passes????
 
-        book_move = get_book_move(self.board, self.book)
-        if book_move:
-            print "playing book move", book_move
-            return book_move
-        print "no book move"
+        if self.book:
+            book_move = get_book_move(self.board, self.book)
+            if book_move:
+                print "playing book move", book_move
+                return book_move
+            print "no book move"
+        else:
+            print "no book"
 
         #board_feature_planes = make_feature_planes(self.board, color)
         board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
