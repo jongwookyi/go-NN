@@ -35,7 +35,8 @@ from Book import MoveRecord
 ###engine = TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15))
 #engine = TFEngine("conv12posdep", Models.Conv12PosDep(N=19, Nfeat=15))
 
-engine = KGSEngine(TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15)))
+#engine = KGSEngine(TFEngine("conv10posdepELU", MoveModels.Conv10PosDepELU(N=19, Nfeat=15)))
+engine = KGSEngine(TFEngine("conv12posdepELU", MoveModels.Conv12PosDepELU(N=19, Nfeat=15)))
 
 gtp = GTP(engine, fclient)
 

@@ -8,7 +8,7 @@ from Board import *
 class HelperEngine:
     def __init__(self):
         # bufsize=1 is line buffered
-        self.proc = subprocess.Popen(["gnugo", "--mode", "gtp"], bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.proc = subprocess.Popen(["gnugo", "--mode", "gtp", "--never-resign"], bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     def send_command(self, command):
         print "HelperEngine: sending command \"%s\"" % command

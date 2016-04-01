@@ -106,7 +106,8 @@ class GTP:
         self.tell_client(("-1.0 "*19 + "\n")*19)
 
     def game_over(self):
-        exit(0)
+        #exit(0)
+        self.tell_client("")
 
     def send_final_status_list(self, line):
         status = line.split()[-1]
