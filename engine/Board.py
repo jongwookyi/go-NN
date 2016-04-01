@@ -183,21 +183,6 @@ class Board:
         print
 
 
-def string_from_board(board):
-    chars = { Color.Empty:'x', Color.Black:'B', Color.White:'W' }
-    return ''.join(chars[board[x,y]] for y in xrange(board.N) for x in xrange(board.N))
-
-def set_board_from_string(board, s):
-    assert len(s) == board.N * board.N
-    colors = { 'x':Color.Empty, 'B':Color.Black, 'W':Color.White }
-    ind = 0
-    board.clear()
-    for y in xrange(board.N):
-        for x in xrange(board.N):
-            board[x,y] = colors[s[ind]]
-            ind += 1
-
-
 def show_sequence(board, moves, first_color):
     board.clear()
     color = first_color

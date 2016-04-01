@@ -1,8 +1,17 @@
 #!/usr/bin/python
 import os
+import pickle
+from operator import xor
 from collections import defaultdict
 from Board import *
-from SGFParser import SGFReader
+from SGFReader import SGFReader
+
+np.random.seed(72936393)
+zobrist_keys = np.random.randint(-2**63, 2**63-1, size=(19,19,3))
+np.random.seed()
+
+def key_from_board(board):
+    return reduce(xor, (zobrist_keys[x,y,board[x,y]] for x in xrange(board.N) for y in xrange(board.N)))
 
 class MoveRecord:
     def __init__(self):
@@ -17,7 +26,7 @@ def add_game_to_book(sgf, book, max_moves, rank_allowed):
     reader = SGFReader(sgf)
 
     if not rank_allowed(reader.black_rank) or not rank_allowed(reader.white_rank):
-        print "skipping %s because of invalid rank(s)" % sgf
+        print "skipping %s because of invalid rank(s) (%s and %s)" % (sgf, reader.black_rank, reader.white_rank)
         return
 
     if "B+" in reader.result:
@@ -32,17 +41,21 @@ def add_game_to_book(sgf, book, max_moves, rank_allowed):
     while moves_played < max_moves and reader.has_more():
         vertex, play_color = reader.peek_next_move()
         if vertex: # if not pass
-            board_str = string_from_board(reader.board)
-            move_record = book[board_str].moves[vertex]
+            board_key = key_from_board(reader.board)
+            move_record = book[board_key].moves[vertex]
             if winner == play_color:
                 move_record.wins += 1
             else:
                 move_record.losses += 1
         reader.play_next_move()
+        moves_played += 1
 
 def lookup_position(book, board):
-    board_str = string_from_board(board)
-    return book[board_str]
+    board_key = key_from_board(board)
+    if board_key in book:
+        return book[board_key]
+    else:
+        return None
 
 def make_book_from_GoGoD():
     book = defaultdict(PositionRecord)
@@ -57,13 +70,22 @@ def make_book_from_GoGoD():
             print "reading sgf %s" % sgf
             add_game_to_book(sgf, book, max_moves, rank_allowed)
             num_games += 1
-            if num_games >= 100:
+            if num_games >= 10000:
                 return book
 
-
-def test_book():
+def write_GoGoD_book():
     book = make_book_from_GoGoD()
+    print "Writing GoGoD book with %d positions." % len(book)
+    with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'w') as f:
+        pickle.dump(book, f)
 
+def load_GoGoD_book():
+    with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'r') as f:
+        book = pickle.load(f)
+    print "Loaded GoGoD book with %d positions." % len(book)
+    return book
+
+def test_book(book):
     board = Board(19)
     play_color = Color.Black
 
@@ -86,7 +108,11 @@ def test_book():
 
 
 if __name__ == '__main__':
-    test_book()
+    #test_book()
+
+    write_GoGoD_book()
+    book = load_GoGoD_book()
+    test_book(book)
 
 
 

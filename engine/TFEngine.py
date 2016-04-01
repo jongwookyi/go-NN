@@ -3,6 +3,7 @@ import numpy as np
 import random
 import os
 from Engine import *
+import Book
 import Features
 import Symmetry
 
@@ -82,11 +83,31 @@ def average_logits_over_symmetries(logits, N):
     mean_logits = mean_logits.reshape((N*N,))
     return mean_logits
 
+def get_book_move(board, book):
+    pos_record = Book.lookup_position(book, board)
+    if pos_record:
+        print "known moves:"
+        best_vertex = None
+        total_count = 0
+        for vertex in pos_record.moves:
+            move_record = pos_record.moves[vertex]
+            print vertex, " - wins=", move_record.wins, "; losses=", move_record.losses
+            total_count += move_record.wins + move_record.losses
+        if True: #total_count >= 10:
+            min_count = total_count / 10
+            popular_moves = [move for move in pos_record.moves if (pos_record.moves[move].wins + pos_record.moves[move].losses > min_count)]
+            print "popular moves are", popular_moves
+            return random.choice(popular_moves)
+    return None
+
+
+
 class TFEngine(BaseEngine):
     def __init__(self, eng_name, model):
         super(TFEngine,self).__init__() 
         self.eng_name = eng_name
         self.model = model
+        self.book = Book.load_GoGoD_book()
 
         # build the graph
         with tf.Graph().as_default():
@@ -109,7 +130,13 @@ class TFEngine(BaseEngine):
         return "1.0"
 
     def pick_move(self, color):
-        #if self.opponent_passed: return None # Pass if opponent passes????
+        if self.opponent_passed: return None # Pass if opponent passes????
+
+        book_move = get_book_move(self.board, self.book)
+        if book_move:
+            print "playing book move", book_move
+            return book_move
+        print "no book move"
 
         #board_feature_planes = make_feature_planes(self.board, color)
         board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)

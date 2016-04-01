@@ -3,6 +3,7 @@ from Board import Board
 class BaseEngine(object):
     def __init__(self):
         self.board = None
+        self.opponent_passed = False
 
     # subclasses must override this
     def name(self):

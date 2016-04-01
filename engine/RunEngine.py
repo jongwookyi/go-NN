@@ -16,6 +16,8 @@ from GTP import GTP
 from Engine import IdiotEngine
 from TFEngine import TFEngine
 import MoveModels
+from Book import PositionRecord
+from Book import MoveRecord
 
 #engine = IdiotEngine()
 #engine = TFEngine("linear", Models.Linear(N=9, Nfeat=12, minibatch_size=1000, learning_rate=0))
