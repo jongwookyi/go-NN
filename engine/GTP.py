@@ -19,6 +19,19 @@ def str_from_coords(x, y):
     if x >= 8: x += 1
     return chr(ord('A')+x) + str(y+1)
 
+class Move:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def is_pass(self):
+        return self.x == self.y == -1
+    def is_resign(self):
+        return self.x == self.y == -2
+    def is_play(self):
+        return not self.is_pass() and not self.is_resign()
+Move.Pass = Move(-1, -1)
+Move.Resign = Move(-2, -2)
+
 class GTP:
     def __init__(self, engine, fclient):
         self.engine = engine
@@ -82,14 +95,18 @@ class GTP:
     def generate_move(self, line):
         color = color_from_str(line.split()[1])
         print "GTP: asked to generate a move for", color_names[color]
-        coords = self.engine.generate_move(color)
-        if coords:
-            x,y = coords
-            print "GTP: engine generated move (%d,%d)" % (x,y)
-            self.tell_client(str_from_coords(x, y))
-        else:
+        move = self.engine.generate_move(color)
+        if move.is_play():
+            print "GTP: engine generated move (%d,%d)" % (move.x,move.y)
+            self.tell_client(str_from_coords(move.x, move.y))
+        elif move.is_pass():
             print "GTP: engine passed"
             self.tell_client("pass")
+        elif move.is_resign():
+            print "GTP: engine resigned"
+            self.tell_client("resign")
+        else:
+            assert False
 
     def gogui_analyze_commands(self):
         print "GTP: got gogui-analyze_commands"

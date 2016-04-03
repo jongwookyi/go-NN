@@ -19,6 +19,10 @@ class Group:
         self.liberties = set([])
         self.color = color
 
+class IllegalMoveException(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
 class Board:
     def __init__(self, N):
         self.N = N
@@ -67,6 +71,8 @@ class Board:
 
     def try_play_stone(self, x, y, color, actually_execute):
         assert color == Color.White or color == Color.Black
+
+        if not (0 <= x < self.N and 0 <= y < self.N): return False
 
         # no playing on top of stones
         xy = x,y
@@ -133,7 +139,8 @@ class Board:
         return True
 
     def play_stone(self, x, y, color):
-        assert self.try_play_stone(x, y, color, actually_execute=True)
+        if not self.try_play_stone(x, y, color, actually_execute=True):
+            raise IllegalMoveException("playing a %s stone at (%d,%d) is illegal" % (color_names[color], x, y))
 
     def play_is_legal(self, x, y, color):
         return self.try_play_stone(x, y, color, actually_execute=False)

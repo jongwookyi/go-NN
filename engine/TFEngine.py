@@ -6,6 +6,7 @@ from Engine import *
 import Book
 import Features
 import Symmetry
+from GTP import Move
 
 #def build_feed_dict(mb_filename, feature_planes, onehot_moves):
 #    N = 9
@@ -120,7 +121,7 @@ class TFEngine(BaseEngine):
                 self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
                 self.sess.run(init)
                 checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
-                #checkpoint_dir = "/home/greg/coding/ML/go/NN/work/good_checkpoints/conv10posdepELU_N19_fe15"
+                #checkpoint_dir = "/home/greg/coding/ML/go/NN/work/good_checkpoints/conv12posdepELU_N19_fe15"
                 restore_from_checkpoint(self.sess, saver, checkpoint_dir)
 
 
@@ -131,13 +132,13 @@ class TFEngine(BaseEngine):
         return "1.0"
 
     def pick_move(self, color):
-        if self.opponent_passed: return None # Pass if opponent passes????
+        if self.opponent_passed: return Move.Pass # Pass if opponent passes????
 
         if self.book:
             book_move = get_book_move(self.board, self.book)
             if book_move:
                 print "playing book move", book_move
-                return book_move
+                return Move(book_move[0], book_move[1])
             print "no book move"
         else:
             print "no book"
@@ -178,7 +179,7 @@ class TFEngine(BaseEngine):
                 if not self.board.play_is_legal(x, y, color):
                     move_probs[ind] = 0
         sum_probs = np.sum(move_probs)
-        if sum_probs == 0: return None # no legal moves, pass
+        if sum_probs == 0: return Move.Pass() # no legal moves, pass
         move_probs /= sum_probs # re-normalize probabilities
 
         pick_best = True
@@ -188,7 +189,7 @@ class TFEngine(BaseEngine):
             move_ind = sample_from(move_probs)
         move_x = move_ind / self.model.N
         move_y = move_ind % self.model.N
-        return move_x, move_y
+        return Move(move_x, move_y)
 
 
 

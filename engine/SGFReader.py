@@ -46,6 +46,8 @@ def parse_property_data_list(file_data, ptr):
 def parse_vertex(s):
     if len(s) == 0:
         return None # pass
+    if s == "tt": # GoGoD sometimes uses this to indicate a pass
+        return None # We are sacrificing >19x19 support here
     x = ord(s[0]) - ord('a')
     y = ord(s[1]) - ord('a')
     return (x,y)
@@ -85,6 +87,7 @@ class SGFReader:
         self.moves = []
         self.black_rank = None
         self.white_rank = None
+        self.board = None
         for property_name, property_data in parser:
             if property_name == "SZ": # board size
                 self.board = Board(int(property_data))
@@ -104,6 +107,9 @@ class SGFReader:
                 self.white_rank = property_data
             elif property_name == "RE": # result
                 self.result = property_data
+
+        if not self.board:
+            self.board = Board(19) # assume 19x19 if we didn't see a size
 
         for (x,y), color in self.initial_stones:
             self.board.play_stone(x, y, color)
@@ -139,7 +145,8 @@ class SGFReader:
 
 
 def test_SGFReader():
-    sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-09-18.sgf"
+    #sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-09-18.sgf"
+    sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/sets/train/1995/1995-07-01c.sgf"
     reader = SGFReader(sgf)
 
     print "initial position:"
@@ -155,8 +162,8 @@ def test_SGFReader():
     print "Game over."
 
 if __name__ == "__main__":
-    test_SGFParser()
-    #test_SGFReader()
+    #test_SGFParser()
+    test_SGFReader()
 
 
 

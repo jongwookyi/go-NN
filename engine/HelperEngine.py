@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import subprocess
-import GTP
+from GTP import *
 from Board import *
 
 # Using gnugo to determine when to pass and to play cleanup moves
@@ -8,7 +8,7 @@ from Board import *
 class HelperEngine:
     def __init__(self):
         # bufsize=1 is line buffered
-        self.proc = subprocess.Popen(["gnugo", "--mode", "gtp", "--never-resign"], bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.proc = subprocess.Popen(["gnugo", "--mode", "gtp", "--level", "1"], bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     def send_command(self, command):
         print "HelperEngine: sending command \"%s\"" % command
@@ -46,14 +46,17 @@ class HelperEngine:
         self.send_command("play %s pass" % color_names[color])
 
     def stone_played(self, x, y, color):
-        self.send_command("play %s %s" % (color_names[color], GTP.str_from_coords(x, y)))
+        self.send_command("play %s %s" % (color_names[color], str_from_coords(x, y)))
 
     def generate_move(self, color):
         response = self.send_command("genmove %s" % color_names[color])
         if 'pass' in response.lower():
-            return None
+            return Move.Pass
+        elif 'resign' in response.lower():
+            return Move.Resign
         else: 
-            return GTP.coords_from_str(response)
+            x, y= coords_from_str(response)
+            return Move(x, y)
 
     def undo(self):
         self.send_command('undo')

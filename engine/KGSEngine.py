@@ -39,16 +39,20 @@ class KGSEngine(BaseEngine):
 
     def generate_move(self, color):
         helper_move = self.helper.generate_move(color)
-        if not helper_move: # helper passed
-            return None
-        else: # helper didn't pass
-            self.helper.undo() # helper must support this
-            vertex = self.engine.generate_move(color)
-            if vertex: # if engine didn't pass:
-                self.helper.stone_played(vertex[0], vertex[1], color)
-            else: # engine passed
+        if helper_move.is_pass(): # helper passed
+            self.engine.player_passed(color)
+            return Move.Pass
+        elif helper_move.is_resign(): # helper resigned
+            return Move.Resign
+        else: # helper didn't pass or resign
+            if helper_move.is_play():
+                self.helper.undo() # helper must support this
+            move = self.engine.generate_move(color)
+            if move.is_play(): 
+                self.helper.stone_played(move.x, move.y, color)
+            elif move.is_pass(): 
                 self.helper.player_passed(color)
-            return vertex
+            return move
 
     def quit(self):
         self.engine.quit()

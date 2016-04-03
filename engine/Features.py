@@ -69,11 +69,6 @@ def make_liberty_count_planes(array, board, Nplanes, play_color):
         for gx,gy in group.vertices:
             array[gx,gy,plane] = 1
 
-    ### TEST
-    #slow_liberty_count_planes = np.zeros((board.N, board.N, Nplanes))
-    #slow_make_liberty_count_planes(slow_liberty_count_planes, board, Nplanes, play_color)
-    #assert np.array_equal(slow_liberty_count_planes, array)
-
 def make_capture_count_planes(array, board, Nplanes, play_color):
     capture_counts = {}
     for group in board.all_groups:
@@ -148,20 +143,20 @@ def make_feature_planes_stones_3liberties_4history_ko(board, play_color):
     make_simple_ko_plane(feature_planes[:,:,14], board)
     return feature_planes
 
-def make_feature_planes_stones_3liberties_4history_ko_4captures(board, play_color):
-    Nplanes = 19
+def make_feature_planes_stones_4liberties_4history_ko_4captures(board, play_color):
+    Nplanes = 21
     feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
     make_color_plane(feature_planes[:,:,0], board, play_color)
     make_color_plane(feature_planes[:,:,1], board, flipped_color[play_color])
     make_color_plane(feature_planes[:,:,2], board, Color.Empty)
     make_ones_plane(feature_planes[:,:,3], board)
-    max_liberties = 3
-    make_liberty_count_planes(feature_planes[:,:,4:10], board, 2*max_liberties, play_color)
+    max_liberties = 4
+    make_liberty_count_planes(feature_planes[:,:,4:12], board, 2*max_liberties, play_color)
     max_lookback = 4
-    make_history_planes(feature_planes[:,:,10:14], board, max_lookback)
-    make_simple_ko_plane(feature_planes[:,:,14], board)
+    make_history_planes(feature_planes[:,:,12:16], board, max_lookback)
+    make_simple_ko_plane(feature_planes[:,:,16], board)
     max_captures = 4
-    make_capture_count_planes(feature_planes[:,:,15:19], board, max_captures, play_color)
+    make_capture_count_planes(feature_planes[:,:,17:21], board, max_captures, play_color)
     return feature_planes
 
 # needs to be rewritten

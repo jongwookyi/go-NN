@@ -4,6 +4,7 @@ import os
 import math
 import sys
 import math
+import random
 
 def apply_grand_normalization(feature_planes, grand_mean, grand_rescaling_factor):
     np.copyto(feature_planes, (feature_planes - grand_mean) * grand_rescaling_factor)
@@ -17,10 +18,21 @@ def apply_featurewise_normalization(feature_planes, feature_means, feature_resca
     np.copyto(feature_planes, (feature_planes - feature_means) * feature_rescaling_factors)
 
 # some parameters I measured on KGS for Features.make_feature_planes_stones_3liberties_4history_ko
+# Capped rescaling factors at 10 and made some stuff up for the ones plane.
 def apply_featurewise_normalization_B(feature_planes):
     apply_featurewise_normalization(feature_planes,
          feature_means=np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0]),
          feature_rescaling_factors=np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10]))
+
+# some parameters I measured on GoGoD for Features.make_feature_planes_stones_4liberties_4history_ko_4captures
+# Capped rescaling factors at 10 and made some stuff up for the ones plane.
+def apply_featurewise_normalization_C(feature_planes):
+    apply_featurewise_normalization(feature_planes,
+            feature_means=np.array([1.482e-01, 1.498e-01, 7.021e-01, 0.682, 4.428e-03, 1.769e-02, 2.616e-02, 9.988e-02, 4.065e-03, 1.742e-02, 2.636e-02, 1.019e-01, 2.756e-03, 2.745e-03,
+                                    2.732e-03, 2.720e-03, 7.553e-05, 2.534e-03, 3.763e-04, 1.052e-04, 7.250e-05]),
+            feature_rescaling_factors=np.array([2.815, 2.802, 2.187, 2.148, 10, 7.585, 6.266, 3.335, 10, 7.643, 6.242, 3.305, 10, 10, 
+                                                10, 10, 10, 10, 10, 10, 10]))
+
 
 
 def get_svd_normalized_features(feature_planes, feature_means, whitening_matrix):
@@ -30,17 +42,16 @@ def get_svd_normalized_features(feature_planes, feature_means, whitening_matrix)
 
 def get_sample(npz_dir, Nfiles):
     print "getting sample data from", npz_dir
+    filenames = os.listdir(npz_dir)[:Nfiles]
+    random.shuffle(filenames)
+
     feature_batches = []
-    file_num = 0
-    for fn in os.listdir(npz_dir):
+    for fn in filenames:
         filename = os.path.join(npz_dir, fn)
         npz = np.load(filename)
         features = npz['feature_planes'].astype(np.float64)
         npz.close()
         feature_batches.append(features)
-
-        file_num += 1
-        if file_num >= Nfiles: break
 
     Nperfile = feature_batches[0].shape[0]
     N = feature_batches[0].shape[1]
@@ -101,7 +112,8 @@ def compute_svd_normalization(samples, Ndiscard, max_rescale):
 def test_normalizations():
     np.set_printoptions(precision=3, linewidth=200)
 
-    npz_dir = '/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15-randomized-2'
+    #npz_dir = '/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15-randomized-2'
+    npz_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train'
     sample = get_sample(npz_dir, Nfiles=100)
 
     print "Grand normalization:"

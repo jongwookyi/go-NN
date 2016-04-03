@@ -1,4 +1,5 @@
 from Board import Board
+from GTP import Move
 
 class BaseEngine(object):
     def __init__(self):
@@ -40,12 +41,11 @@ class BaseEngine(object):
         assert False
 
     def generate_move(self, color):
-        coords = self.pick_move(color)
-        if coords:
-            x,y = coords
-            self.board.play_stone(x, y, color)
+        move = self.pick_move(color)
+        if move.is_play():
+            self.board.play_stone(move.x, move.y, color)
         self.board.show()
-        return coords
+        return move
 
     def quit(self):
         pass
@@ -68,7 +68,7 @@ class IdiotEngine(BaseEngine):
         for x in xrange(self.board.N):
             for y in xrange(self.board.N):
                 if self.board.play_is_legal(x, y, color):
-                    return (x,y)
-        return None
+                    return Move(x,y)
+        return Move.Pass()
 
 

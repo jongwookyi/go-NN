@@ -164,7 +164,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
         else: # Run the training loop
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
             #loader = NPZ.RandomizingLoader(train_data_dir)
-            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=4)
+            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=2)
             while True:
                 if False: #step % 10000 == 0 and step != 0: 
                     run_validation()
@@ -208,7 +208,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
 
 if __name__ == "__main__":
     N = 19
-    Nfeat = 15
+    #Nfeat = 15
+    Nfeat = 21
     
     #model = Models.Conv6PosDep(N, Nfeat) 
     #model = Models.Conv8PosDep(N, Nfeat) 
@@ -217,11 +218,14 @@ if __name__ == "__main__":
     model = MoveModels.Conv12PosDepELU(N, Nfeat) 
     #model = MoveModels.Conv4PosDepELU(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
+    #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
+    #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
+    #normalization = Normalization.apply_featurewise_normalization_B
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
+    normalization = Normalization.apply_featurewise_normalization_C
     build_feed_dict = MoveTraining.build_feed_dict
     loss_func = MoveTraining.loss_func
-    normalization = Normalization.apply_featurewise_normalization_B
 
     """
     #model = InfluenceModels.Conv4PosDep(N, Nfeat)
