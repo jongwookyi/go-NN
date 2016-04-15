@@ -69,8 +69,8 @@ class Loader:
         self.filename_queue = [os.path.join(npz_dir, f) for f in os.listdir(npz_dir)]
     def has_more(self):
         return len(self.filename_queue) > 0
-    def next_minibatch(self):
-        return read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
+    def next_minibatch(self, names):
+        return read_npz(self.filename_queue.pop(), names)
 
 class RandomizingLoader:
     def __init__(self, npz_dir):

@@ -35,6 +35,7 @@ class Board:
         self.all_groups = set([])
         self.simple_ko_vertex = None
         self.move_list = []
+        self.color_to_play = Color.Black
 
     def __getitem__(self, index):
         return self.vertices[index]
@@ -135,7 +136,7 @@ class Board:
             self.simple_ko_vertex = None
 
         self.move_list.append(xy)
-
+        self.color_to_play = flipped_color[color]
         return True
 
     def play_stone(self, x, y, color):
@@ -149,11 +150,12 @@ class Board:
     def play_pass(self):
         self.simple_ko_vertex = None
         self.move_list.append(None)
+        self.color_to_play = flipped_color[self.color_to_play]
             
-    def flip_colors(self):
-        for x in range(self.N):
-            for y in range(self.N):
-                self.vertices[x,y] = flipped_color[self.vertices[x,y]]
+    #def flip_colors(self):
+    #    for x in range(self.N):
+    #        for y in range(self.N):
+    #            self.vertices[x,y] = flipped_color[self.vertices[x,y]]
 
     def show(self):
         color_strings = { 

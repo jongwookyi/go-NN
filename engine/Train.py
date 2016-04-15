@@ -145,7 +145,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             print "Starting validation..."
             while val_loader.has_more():
                 if mb_num % 100 == 0: print "validation minibatch #%d" % mb_num
-                feed_dict = build_feed_dict(val_loader, feature_planes, outputs)
+                feed_dict = build_feed_dict(val_loader, normalization, feature_planes, outputs)
                 loss_value, accuracy_value = sess.run([total_loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
                 mean_accuracy += accuracy_value
@@ -164,9 +164,9 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
         else: # Run the training loop
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
             #loader = NPZ.RandomizingLoader(train_data_dir)
-            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=2)
+            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
             while True:
-                if False: #step % 10000 == 0 and step != 0: 
+                if step % 10000 == 0 and step != 0: 
                     run_validation()
 
                 start_time = time.time()
@@ -195,8 +195,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                 if step % 10 == 0:
                     minibatch_size = feed_dict[feature_planes].shape[0]
                     examples_per_sec = minibatch_size / (load_time + train_time)
-                    print "%s: step %d, lr=%.6f, loss = %.2f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f sec/batch)" % \
-                            (datetime.now(), step, learning_rate, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time)
+                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.2f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f sec/batch)" % \
+                            (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time)
     
                 if step % 1000 == 0 and step != 0:
                     saver.save(sess, os.path.join(model.train_dir, "checkpoints", "model.ckpt"), global_step=step)
@@ -215,7 +215,9 @@ if __name__ == "__main__":
     #model = Models.Conv8PosDep(N, Nfeat) 
     #model = Models.Conv10PosDep(N, Nfeat) 
     #model = MoveModels.Conv10PosDepELU(N, Nfeat) 
-    model = MoveModels.Conv12PosDepELU(N, Nfeat) 
+    #model = MoveModels.Conv12PosDepELU(N, Nfeat) 
+    #model = MoveModels.Conv16PosDepELU(N, Nfeat) 
+    model = MoveModels.Res5x2PreELU(N, Nfeat) 
     #model = MoveModels.Conv4PosDepELU(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"

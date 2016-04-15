@@ -6,9 +6,13 @@ from Board import *
 # Using gnugo to determine when to pass and to play cleanup moves
 
 class HelperEngine:
-    def __init__(self):
+    def __init__(self, cleanup):
         # bufsize=1 is line buffered
-        self.proc = subprocess.Popen(["gnugo", "--mode", "gtp", "--level", "1"], bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        if cleanup:
+            command = ["gnugo", "--mode", "gtp", "--level", "10", "--chinese-rules", "--capture-all-dead", "--never-resign"]
+        else:
+            command = ["gnugo", "--mode", "gtp", "--level", "1"]
+        self.proc = subprocess.Popen(command, bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     def send_command(self, command):
         print "HelperEngine: sending command \"%s\"" % command

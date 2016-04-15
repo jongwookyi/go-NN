@@ -49,7 +49,8 @@ class GTP:
         print "GTP: Sent error message to client: " + s
     
     def list_commands(self):
-        commands = ["protocol_version", "name", "version", "boardsize", "clear_board", "komi", "play", "genmove", "list_commands", "quit", "gogui-analyze_commands", "kgs-game_over"]
+        commands = ["protocol_version", "name", "version", "boardsize", "clear_board", "komi", "play", "genmove", "undo", 
+                    "list_commands", "quit", "gogui-analyze_commands", "kgs-game_over", "time_left" , "kgs-genmove_cleanup"]
         if self.engine.supports_final_status_list():
             commands.append("final_status_list")
         self.tell_client("\n".join(commands))
@@ -92,10 +93,10 @@ class GTP:
             self.engine.stone_played(x, y, color)
         self.tell_client("")
 
-    def generate_move(self, line):
+    def generate_move(self, line, cleanup=False):
         color = color_from_str(line.split()[1])
         print "GTP: asked to generate a move for", color_names[color]
-        move = self.engine.generate_move(color)
+        move = self.engine.generate_move(color, cleanup)
         if move.is_play():
             print "GTP: engine generated move (%d,%d)" % (move.x,move.y)
             self.tell_client(str_from_coords(move.x, move.y))
@@ -107,6 +108,14 @@ class GTP:
             self.tell_client("resign")
         else:
             assert False
+
+    def kgs_genmove_cleanup(self, line):
+        self.generate_move(line, cleanup=True)
+
+    def undo(self):
+        print "GTP: got undo"
+        self.engine.undo()
+        self.tell_client("")
 
     def gogui_analyze_commands(self):
         print "GTP: got gogui-analyze_commands"
@@ -120,7 +129,11 @@ class GTP:
 
     def show_influence_map(self):
         print "GTP: got show_influence_map"
-        self.tell_client(("-1.0 "*19 + "\n")*19)
+        #self.tell_client(("-1.0 "*19 + "\n")*19)
+        influence_map = self.engine.make_influence_map()
+        str_map = [[str(influence_map[x,y]) for x in xrange(influence_map.shape[0])] for y in xrange(influence_map.shape[1]-1, -1, -1)]
+        big_str = "\n".join(" ".join(val for val in row) for row in str_map)
+        self.tell_client(big_str)
 
     def game_over(self):
         #exit(0)
@@ -129,6 +142,10 @@ class GTP:
     def send_final_status_list(self, line):
         status = line.split()[-1]
         self.tell_client(self.engine.final_status_list(status))
+
+    def time_left(self, line):
+        print "GTP: got time_left"
+        self.tell_client("")
 
     def loop(self):
         while True:
@@ -157,6 +174,8 @@ class GTP:
                 self.stone_played(line)
             elif line.startswith("genmove"): # We must generate a move
                 self.generate_move(line)
+            elif line.startswith("undo"): # Undo the previous move
+                self.undo()
             elif line.startswith("gogui-analyze_commands"): # List supported GoGui analyze commands
                 self.gogui_analyze_commands()
             elif line.startswith("hello_world"): # hello world
@@ -167,6 +186,10 @@ class GTP:
                 self.game_over()
             elif line.startswith("final_status_list"):
                 self.send_final_status_list(line)
+            elif line.startswith("time_left"):
+                self.time_left(line)
+            elif line.startswith("kgs-genmove_cleanup"):
+                self.kgs_genmove_cleanup(line)
             else:
                 self.error_client("Don't recognize that command")
 

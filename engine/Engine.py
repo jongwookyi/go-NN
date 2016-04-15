@@ -1,10 +1,28 @@
 from Board import Board
 from GTP import Move
+import copy
 
 class BaseEngine(object):
     def __init__(self):
         self.board = None
         self.opponent_passed = False
+        self.state_stack = []
+
+    def push_state(self):
+        self.state_stack.append(copy.deepcopy(self.board))
+
+    def pop_state(self):
+        self.board = self.state_stack.pop()
+        self.opponent_passed = False
+
+    def undo(self):
+        if len(self.state_stack) > 0:
+            self.pop_state()
+            print "BaseEngine: after undo, board is"
+            self.board.show()
+        else:
+            print "BaseEngine: undo called, but state_stack is empty. Board is"
+            self.board.show()
 
     # subclasses must override this
     def name(self):
@@ -23,15 +41,18 @@ class BaseEngine(object):
 
     def clear_board(self):
         self.board.clear()
+        self.state_stack = []
         self.opponent_passed = False
 
     def set_komi(self, komi):
         pass
 
     def player_passed(self, color):
+        self.push_state()
         self.opponent_passed = True
 
     def stone_played(self, x, y, color):
+        self.push_state()
         self.board.play_stone(x, y, color)
         self.opponent_passed = False
         self.board.show()
@@ -40,8 +61,9 @@ class BaseEngine(object):
     def pick_move(self, color):
         assert False
 
-    def generate_move(self, color):
+    def generate_move(self, color, cleanup=False):
         move = self.pick_move(color)
+        self.push_state()
         if move.is_play():
             self.board.play_stone(move.x, move.y, color)
         self.board.show()

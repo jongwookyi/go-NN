@@ -5,6 +5,7 @@ import os
 from Engine import *
 import Book
 import Features
+import Normalization
 import Symmetry
 from GTP import Move
 
@@ -84,6 +85,20 @@ def average_logits_over_symmetries(logits, N):
     mean_logits = mean_logits.reshape((N*N,))
     return mean_logits
 
+#def do_random_symmetry(features):
+#    s = np.randint(0, 7)
+#    N = features.shape[0]
+#    Nfeat = features.shape[2]
+#    feature_batch = features.copy().reshape((1, N, N, Nfeat))
+#    Symmetry.apply_symmetry_planes(feature_batch[0,:,:,:], s)
+#    return feature_batch, s
+#
+#def revert_symmetry_logits(logits, s, N):
+#    logit_planes = logits.copy().reshape((1, N, N))
+#    Symmetry.invert_symmetry_plane(logit_planes[0,:,:], s)
+#    return logit_planes.reshape((N*N,))
+
+
 def get_book_move(board, book):
     pos_record = Book.lookup_position(book, board)
     if pos_record:
@@ -132,7 +147,7 @@ class TFEngine(BaseEngine):
         return "1.0"
 
     def pick_move(self, color):
-        if self.opponent_passed: return Move.Pass # Pass if opponent passes????
+        #if self.opponent_passed: return Move.Pass # Pass if opponent passes????
 
         if self.book:
             book_move = get_book_move(self.board, self.book)
@@ -144,16 +159,23 @@ class TFEngine(BaseEngine):
             print "no book"
 
         #board_feature_planes = make_feature_planes(self.board, color)
-        board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
+        if self.model.Nfeat == 15:
+            board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
+            #feature_batch = \
+            #    (feature_batch.astype(np.float32) 
+            #     - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
+            #    * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
+            Normalization.apply_featurewise_normalization_B(board_feature_planes)
+        elif self.model.Nfeat == 21:
+            board_feature_planes = Features.make_feature_planes_stones_4liberties_4history_ko_4captures(self.board, color).astype(np.float32)
+            Normalization.apply_featurewise_normalization_C(board_feature_planes)
+        else:
+            assert False
         #board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
         #feed_dict = {self.feature_planes: board_feature_planes}
         feature_batch = make_symmetry_batch(board_feature_planes)
         #print "feature_batch.shape =", feature_batch.shape
 
-        feature_batch = \
-            (feature_batch.astype(np.float32) 
-             - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
-            * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
 
 
         feed_dict = {self.feature_planes: feature_batch}

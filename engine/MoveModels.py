@@ -266,6 +266,33 @@ class Conv12PosDepELU:
         logits = tf.reshape(conv12, [-1, N*N])        
         return logits
 
+class Conv16PosDepELU: 
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv16posdepELU_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 256
+        NKfirst = 256
+        conv1 = ELU_conv_pos_dep_bias(feature_planes, 5, Nfeat, NKfirst, N, 'conv1')
+        conv2 = ELU_conv_pos_dep_bias(conv1, 3, NKfirst, NK, N, 'conv2')
+        conv3 = ELU_conv_pos_dep_bias(conv2, 3, NK, NK, N, 'conv3')
+        conv4 = ELU_conv_pos_dep_bias(conv3, 3, NK, NK, N, 'conv4')
+        conv5 = ELU_conv_pos_dep_bias(conv4, 3, NK, NK, N, 'conv5')
+        conv6 = ELU_conv_pos_dep_bias(conv5, 3, NK, NK, N, 'conv6')
+        conv7 = ELU_conv_pos_dep_bias(conv6, 3, NK, NK, N, 'conv7')
+        conv8 = ELU_conv_pos_dep_bias(conv7, 3, NK, NK, N, 'conv8')
+        conv9 = ELU_conv_pos_dep_bias(conv8, 3, NK, NK, N, 'conv9')
+        conv10 = ELU_conv_pos_dep_bias(conv9, 3, NK, NK, N, 'conv10')
+        conv11 = ELU_conv_pos_dep_bias(conv10, 3, NK, NK, N, 'conv11')
+        conv12 = ELU_conv_pos_dep_bias(conv11, 3, NK, NK, N, 'conv12')
+        conv13 = ELU_conv_pos_dep_bias(conv12, 3, NK, NK, N, 'conv13')
+        conv14 = ELU_conv_pos_dep_bias(conv13, 3, NK, NK, N, 'conv14')
+        conv15 = ELU_conv_pos_dep_bias(conv14, 3, NK, NK, N, 'conv15')
+        conv16 = conv_pos_dep_bias(conv15, 3, NK, 1, N, 'conv16') 
+        logits = tf.reshape(conv16, [-1, N*N])        
+        return logits
+
 class Conv4PosDepELU: 
     def __init__(self, N, Nfeat):
         self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv4posdepELU_N%d_fe%d" % (N, Nfeat)
@@ -304,6 +331,22 @@ class Conv12PosDep:
         logits = tf.reshape(conv12, [-1, N*N])        
         return logits
 
+class Res5x2PreELU:
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/res5x2_preelu_N%d_fe%d" % (N, Nfeat)
+        self.N = N
+        self.Nfeat = Nfeat
+    def inference(self, feature_planes, N, Nfeat):
+        NK = 256
+        conv_in = conv_pos_dep_bias(feature_planes, 5, Nfeat, NK, N, 'conv_in')
+        res1 = residual_block_preELU_2convs_pos_dep_bias(conv_in, 3, NK, N, 'res1')
+        res2 = residual_block_preELU_2convs_pos_dep_bias(res1, 3, NK, N, 'res2')
+        res3 = residual_block_preELU_2convs_pos_dep_bias(res2, 3, NK, N, 'res3')
+        res4 = residual_block_preELU_2convs_pos_dep_bias(res3, 3, NK, N, 'res4')
+        res5 = residual_block_preELU_2convs_pos_dep_bias(res4, 3, NK, N, 'res5')
+        conv_out = conv_pos_dep_bias(res5, 3, NK, 1, N, 'conv_out')
+        logits = tf.reshape(conv_out, [-1, N*N])        
+        return logits
 
 class FirstMoveTest: 
     def __init__(self, N, Nfeat):
@@ -314,6 +357,7 @@ class FirstMoveTest:
         bias = tf.Variable(tf.constant(0.0, shape=[self.N, self.N, 1]), name='single_bias')
         logits = tf.reshape(bias, [-1, N*N])
         return logits
+
 
 
 
