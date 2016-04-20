@@ -163,8 +163,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             run_validation()
         else: # Run the training loop
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
-            #loader = NPZ.RandomizingLoader(train_data_dir)
-            loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
+            loader = NPZ.RandomizingLoader(train_data_dir, minibatch_size=128)
+            #loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
             #loader = NPZ.SplittingRandomizingLoader(train_data_dir, Nsplit=2)
             while True:
                 if step % 10000 == 0 and step != 0: 

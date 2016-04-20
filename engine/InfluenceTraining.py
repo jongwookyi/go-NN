@@ -10,10 +10,9 @@ def apply_random_symmetries(many_feature_planes, many_final_maps):
         Symmetry.apply_symmetry_plane(many_final_maps[i,:,:], s)
 
 def build_feed_dict(loader, apply_normalization, feature_planes, final_maps):
-    loaded_feature_planes, loaded_final_maps = loader.next_minibatch(('feature_planes', 'final_maps'))
-
-    loaded_feature_planes = loaded_feature_planes.astype(np.float32)
-    loaded_final_maps = loaded_final_maps.astype(np.float32)
+    batch = loader.next_minibatch(('feature_planes', 'final_maps'))
+    loaded_feature_planes = batch['feature_planes'].astype(np.float32)
+    loaded_final_maps = batch['final_maps'].astype(np.float32)
 
     apply_normalization(loaded_feature_planes)
 

@@ -12,9 +12,9 @@ def apply_random_symmetries(many_feature_planes, many_move_arrs):
 
 
 def build_feed_dict(loader, apply_normalization, feature_planes, move_indices):
-    loaded_feature_planes, loaded_move_arrs = loader.next_minibatch(('feature_planes', 'moves'))
-    loaded_feature_planes = loaded_feature_planes.astype(np.float32)
-    loaded_move_arrs = loaded_move_arrs.astype(np.int32) # BIT ME HARD.
+    batch = loader.next_minibatch(('feature_planes', 'moves')  )
+    loaded_feature_planes = batch['feature_planes'].astype(np.float32)
+    loaded_move_arrs = batch['moves'].astype(np.int32) # BIT ME HARD.
 
     apply_normalization(loaded_feature_planes)
 

@@ -72,6 +72,44 @@ class Loader:
     def next_minibatch(self, names):
         return read_npz(self.filename_queue.pop(), names)
 
+
+class RandomizingLoader(self, npz_dir):
+    def __init__(self, npz_dir, minibatch_size):
+        self.filename_queue = []
+        self.npz_dir = npz_dir
+        self.minibatch_size = minibatch_size
+        self.saved_examples = None
+        self.num_saved_examples = 0
+
+    def load_more_examples(self, names):
+        print "loading more examples..."
+        if not self.filename_queue:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "GeneralRandomizingLoader: built new filename queue with length", len(self.filename_queue)
+        examples = read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
+        if self.saved_examples == None:
+            self.saved_examples = examples
+        else:
+            for name in names:
+                self.saved_examples[name] = np.concatenate(self.saved_examples[name], examples[name])
+        self.num_saved_examples = self.saved_examples[names[0]].shape[0]
+        print "now num_saved_examples =", num_saved_examples
+
+    def next_minibatch(self, names):
+        print "asked for minibatch of size % when num_saved_examples = %d" % (self.minibatch_size, self.num_saved_examples)
+        while self.num_saved_examples < self.minibatch_size:
+            self.load_more_examples(names)
+        batch = {}
+        for name in names:
+            batch[name] = self.saved_examples[name][0:minibatch_size,:]
+            self.saved_examples[name] = self.saved_examples[name][minibatch_size:,:]
+        self.num_saved_examples -= self.minibatch_size
+        print "after returning minibatch, num_saved_examples = %d" % self.num_saved_examples
+        return batch
+
+
+"""
 class RandomizingLoader:
     def __init__(self, npz_dir):
         self.filename_queue = None
@@ -130,6 +168,7 @@ class SplittingRandomizingLoader:
             self.Nsaved += self.Nsplit
         self.Nsaved -= 1
         return tuple(self.saved_batches[name].pop() for name in names)
+"""
 
 
 

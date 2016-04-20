@@ -11,9 +11,9 @@ def apply_random_symmetries(many_feature_planes):
 
 
 def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
-    loaded_feature_planes, loaded_scores = loader.next_minibatch(('feature_planes', 'final_scores'))
-    loaded_feature_planes = loaded_feature_planes.astype(np.float32)
-    loaded_scores = loaded_scores.astype(np.int32) # BIT ME HARD.
+    batch = loader.next_minibatch(('feature_planes', 'final_scores'))
+    loaded_feature_planes = batch['feature_planes'].astype(np.float32)
+    loaded_scores = batch['final_scores'].astype(np.int32) # BIT ME HARD.
 
     apply_normalization(loaded_feature_planes)
 
