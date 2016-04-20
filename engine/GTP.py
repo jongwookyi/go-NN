@@ -1,8 +1,7 @@
 import sys
+import os
 
-from Board import Color
-from Board import Board
-from Board import color_names
+from Board import Board, Color, color_names
 
 def color_from_str(s):
     if 'w' in s or 'W' in s: return Color.White
@@ -31,6 +30,12 @@ class Move:
         return not self.is_pass() and not self.is_resign()
 Move.Pass = Move(-1, -1)
 Move.Resign = Move(-2, -2)
+
+def str_from_map(float_map):
+    str_map = [[str(float_map[x,y]) for x in xrange(float_map.shape[0])] 
+                                 for y in xrange(float_map.shape[1]-1, -1, -1)]
+    big_str = "\n".join(" ".join(val for val in row) for row in str_map)
+    return big_str
 
 class GTP:
     def __init__(self, engine, fclient):
@@ -120,7 +125,8 @@ class GTP:
     def gogui_analyze_commands(self):
         print "GTP: got gogui-analyze_commands"
         analyze_commands = ["string/Hello World/hello_world",
-                            "dboard/Show Influence Map/show_influence_map"]
+                            "dboard/Show Influence Map/show_influence_map",
+                            "dboard/Show Move Probabilities/show_move_probs"]
         self.tell_client("\n".join(analyze_commands))
 
     def hello_world(self):
@@ -129,11 +135,21 @@ class GTP:
 
     def show_influence_map(self):
         print "GTP: got show_influence_map"
-        #self.tell_client(("-1.0 "*19 + "\n")*19)
-        influence_map = self.engine.make_influence_map()
-        str_map = [[str(influence_map[x,y]) for x in xrange(influence_map.shape[0])] for y in xrange(influence_map.shape[1]-1, -1, -1)]
-        big_str = "\n".join(" ".join(val for val in row) for row in str_map)
-        self.tell_client(big_str)
+        try:
+            influence_map = self.engine.make_influence_map()
+        except:
+            self.error_client("Not supported.")
+            return
+        self.tell_client(str_from_map(influence_map))
+
+    def show_move_probs(self):
+        print "GTP: got show_move_probs"
+        try:
+            move_probs = self.engine.last_move_probs()
+        except:
+            self.error_client("Not supported")
+            return
+        self.tell_client(str_from_map(move_probs))
 
     def game_over(self):
         #exit(0)
@@ -182,6 +198,8 @@ class GTP:
                 self.hello_world()
             elif line.startswith("show_influence_map"):
                 self.show_influence_map()
+            elif line.startswith("show_move_probs"):
+                self.show_move_probs()
             elif line.startswith("kgs-game_over"):
                 self.game_over()
             elif line.startswith("final_status_list"):
@@ -192,5 +210,14 @@ class GTP:
                 self.kgs_genmove_cleanup(line)
             else:
                 self.error_client("Don't recognize that command")
+
+# Redirect stuff that would normally go to stdout
+# and stderr to a file.
+def redirect_all_output(logfile):
+    fclient = sys.stdout
+    logfile = "log_engine.txt"
+    sys.stdout = sys.stderr = open(logfile, 'w', 0) # 0 = unbuffered
+    return fclient
+
 
 

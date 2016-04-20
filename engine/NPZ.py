@@ -80,7 +80,7 @@ class RandomizingLoader:
         if not self.filename_queue:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
             random.shuffle(self.filename_queue)
-            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+            print "RandomizingLoader: built new filename queue with length", len(self.filename_queue)
         return read_npz(self.filename_queue.pop(), names)
 
 
@@ -93,7 +93,7 @@ class GroupingRandomizingLoader:
         if len(self.filename_queue) < self.Ngroup:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
             random.shuffle(self.filename_queue)
-            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+            print "GroupingRandomizingLoader: built new filename queue with length", len(self.filename_queue)
         components = [read_npz(self.filename_queue.pop(), ('feature_planes', 'moves')) for i in xrange(self.Ngroup)]
         Nperfile = components[0][0].shape[0]
         N = components[0][0].shape[1]
@@ -105,6 +105,33 @@ class GroupingRandomizingLoader:
             end = (i+1) * Nperfile
             grouped_features[start:end,:,:,:], grouped_moves[start:end,:] = components[i]
         return grouped_features, grouped_moves
+
+class SplittingRandomizingLoader:
+    def __init__(self, npz_dir, Nsplit):
+        self.filename_queue = []
+        self.npz_dir = npz_dir
+        self.Nsplit = Nsplit
+        self.Nsaved = 0
+    def next_minibatch(self, names):
+        if not self.filename_queue:
+            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
+            random.shuffle(self.filename_queue)
+            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
+        if self.Nsaved == 0:
+            self.saved_batches = dict((name, []) for name in names)        
+            big_batch = read_npz(self.filename_queue.pop(), names)
+            for n,name in enumerate(names):
+                Nbig = big_batch[n].shape[0]
+                assert Nbig % self.Nsplit == 0
+                for i in range(self.Nsplit):
+                    start = i*Nbig/self.Nsplit
+                    end = (i+1)*Nbig/self.Nsplit
+                    self.saved_batches[name].append(big_batch[n][start:end,:])
+            self.Nsaved += self.Nsplit
+        self.Nsaved -= 1
+        return tuple(self.saved_batches[name].pop() for name in names)
+
+
 
 
 if __name__ == '__main__':

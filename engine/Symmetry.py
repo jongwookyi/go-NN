@@ -40,4 +40,27 @@ def apply_symmetry_vertex(vertex, N, s):
     assert 0 <= vertex[0] < N
     assert 0 <= vertex[1] < N
 
+def get_symmetry_vertex_tuple(vertex, N, s):
+    x,y = vertex
+    if (s & 1) != 0: # flip x
+        x = N - x - 1
+    if (s & 2) != 0: # flip y
+        y = N - y - 1
+    if (s & 4) != 0: # swap x and y
+        x,y = y,x
+    assert 0 <= x < N
+    assert 0 <= y < N
+    return (x,y)
 
+def get_inverse_symmetry_vertex_tuple(vertex, N, s):
+    x,y = vertex
+    # note reverse order of 4,2,1
+    if (s & 4) != 0: # swap x and y
+        x,y = y,x
+    if (s & 2) != 0: # flip y
+        y = N - y - 1
+    if (s & 1) != 0: # flip x
+        x = N - x - 1
+    assert 0 <= x < N
+    assert 0 <= y < N
+    return (x,y)

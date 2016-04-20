@@ -87,6 +87,7 @@ class SGFReader:
         self.moves = []
         self.black_rank = None
         self.white_rank = None
+        self.result = None
         self.board = None
         for property_name, property_data in parser:
             if property_name == "SZ": # board size

@@ -8,6 +8,7 @@ import Features
 import Normalization
 import Symmetry
 from GTP import Move
+from Board import *
 
 #def build_feed_dict(mb_filename, feature_planes, onehot_moves):
 #    N = 9
@@ -116,7 +117,16 @@ def get_book_move(board, book):
             return random.choice(popular_moves)
     return None
 
-
+def ensure_politeness(board, xy):
+    x,y = xy
+    if np.all(board.vertices == Color.Empty):        
+        if x < board.N/2:
+            x = board.N - x - 1
+        if y < board.N/2:
+            y = board.N - y - 1
+        if y > x:
+            x,y = y,x
+    return x,y
 
 class TFEngine(BaseEngine):
     def __init__(self, eng_name, model):
@@ -125,6 +135,8 @@ class TFEngine(BaseEngine):
         self.model = model
         self.book = Book.load_GoGoD_book()
         #self.book = None
+
+        self.last_move_probs = np.zeros((self.model.N * self.model.N,))
 
         # build the graph
         with tf.Graph().as_default():
@@ -146,6 +158,11 @@ class TFEngine(BaseEngine):
     def version(self):
         return "1.0"
 
+    def set_board_size(self, N):
+        if N != self.model.N:
+            return False
+        return BaseEngine.set_board_size(self, N)
+
     def pick_move(self, color):
         #if self.opponent_passed: return Move.Pass # Pass if opponent passes????
 
@@ -153,38 +170,28 @@ class TFEngine(BaseEngine):
             book_move = get_book_move(self.board, self.book)
             if book_move:
                 print "playing book move", book_move
+                book_move = ensure_politeness(self.board, book_move)
                 return Move(book_move[0], book_move[1])
             print "no book move"
         else:
             print "no book"
 
-        #board_feature_planes = make_feature_planes(self.board, color)
         if self.model.Nfeat == 15:
             board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
-            #feature_batch = \
-            #    (feature_batch.astype(np.float32) 
-            #     - np.array([0.146, 0.148, 0.706, 0.682, 0.005, 0.018, 0.124, 0.004, 0.018, 0.126, 0.003, 0.003, 0.003, 0.003, 0])) \
-            #    * np.array([2.829, 2.818, 2.195, 2.148, 10, 7.504, 3.0370, 10, 7.576, 3.013, 10, 10, 10, 10, 10])
             Normalization.apply_featurewise_normalization_B(board_feature_planes)
         elif self.model.Nfeat == 21:
             board_feature_planes = Features.make_feature_planes_stones_4liberties_4history_ko_4captures(self.board, color).astype(np.float32)
             Normalization.apply_featurewise_normalization_C(board_feature_planes)
         else:
             assert False
-        #board_feature_planes = board_feature_planes.reshape((1, self.model.N, self.model.N, self.model.Nfeat))
-        #feed_dict = {self.feature_planes: board_feature_planes}
         feature_batch = make_symmetry_batch(board_feature_planes)
-        #print "feature_batch.shape =", feature_batch.shape
 
 
 
         feed_dict = {self.feature_planes: feature_batch}
 
-        #move_logits = self.sess.run(self.logits, feed_dict)
-        #move_logits = move_logits.reshape((self.model.N * self.model.N,))
         logit_batch = self.sess.run(self.logits, feed_dict)
         move_logits = average_logits_over_symmetries(logit_batch, self.model.N)
-        #print move_logits
         softmax_temp = 10.0
         move_probs = softmax(move_logits, softmax_temp)
 
@@ -211,8 +218,16 @@ class TFEngine(BaseEngine):
             move_ind = sample_from(move_probs)
         move_x = move_ind / self.model.N
         move_y = move_ind % self.model.N
+
+        move_x,move_y = ensure_politeness(self.board, (move_x, move_y))
+
+        self.last_move_probs = move_probs
+        if color == Color.Black: self.last_move_probs *= -1
+
         return Move(move_x, move_y)
 
+    def last_move_probs(self):
+        return self.last_move_probs
 
 
 

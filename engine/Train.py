@@ -165,6 +165,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             step = optionally_restore_from_checkpoint(sess, saver, ema_saver, model.train_dir)
             #loader = NPZ.RandomizingLoader(train_data_dir)
             loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
+            #loader = NPZ.SplittingRandomizingLoader(train_data_dir, Nsplit=2)
             while True:
                 if step % 10000 == 0 and step != 0: 
                     run_validation()
@@ -216,8 +217,10 @@ if __name__ == "__main__":
     #model = Models.Conv10PosDep(N, Nfeat) 
     #model = MoveModels.Conv10PosDepELU(N, Nfeat) 
     #model = MoveModels.Conv12PosDepELU(N, Nfeat) 
+    model = MoveModels.Conv12PosDepELUBig(N, Nfeat) 
     #model = MoveModels.Conv16PosDepELU(N, Nfeat) 
-    model = MoveModels.Res5x2PreELU(N, Nfeat) 
+    #model = MoveModels.Res5x2PreELU(N, Nfeat) 
+    #model = MoveModels.Res10x2PreELU(N, Nfeat) 
     #model = MoveModels.Conv4PosDepELU(N, Nfeat) 
     #model = Models.FirstMoveTest(N, Nfeat) 
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
