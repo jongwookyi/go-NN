@@ -46,6 +46,16 @@ class TFPolicy:
         return good_moves
 
 
+class IdiotPolicy:
+    def suggest_moves(self, board):
+        moves = []
+        for x in xrange(board.N):
+            for y in xrange(board.N):
+                if board.play_is_legal(x, y, board.color_to_play):
+                    moves.append((x,y))
+        return moves
+
+
 class TFEval:
     def __init__(self, model):
         self.model = model

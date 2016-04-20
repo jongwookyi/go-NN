@@ -122,8 +122,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
         momentum_ph = tf.placeholder(tf.float32)
         feature_planes = tf.placeholder(tf.float32, shape=[None, N, N, Nfeat])
 
-        logits = model.inference(feature_planes, N, Nfeat)
-        outputs, total_loss, accuracy = loss_func(logits)
+        model_outputs = model.inference(feature_planes, N, Nfeat)
+        outputs_ph, total_loss, accuracy = loss_func(model_outputs)
         print "total_loss =", total_loss
         train_op, ema_saver = train_step(total_loss, accuracy, learning_rate_ph, momentum_ph)
 
@@ -145,7 +145,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             print "Starting validation..."
             while val_loader.has_more():
                 if mb_num % 100 == 0: print "validation minibatch #%d" % mb_num
-                feed_dict = build_feed_dict(val_loader, normalization, feature_planes, outputs)
+                feed_dict = build_feed_dict(val_loader, normalization, feature_planes, outputs_ph)
                 loss_value, accuracy_value = sess.run([total_loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
                 mean_accuracy += accuracy_value
@@ -171,7 +171,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                     run_validation()
 
                 start_time = time.time()
-                feed_dict = build_feed_dict(loader, normalization, feature_planes, outputs)
+                feed_dict = build_feed_dict(loader, normalization, feature_planes, outputs_ph)
                 load_time = time.time() - start_time
 
                 if step % 10 == 0:
