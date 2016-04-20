@@ -34,8 +34,11 @@ def linear_layer(inputs, Nin, Nout):
     out = tf.matmul(inputs, weights) + bias
     return out
 
-def fully_connected_layer(inputs, Nin, Nout):
+def ReLU_fully_connected_layer(inputs, Nin, Nout):
     return tf.nn.relu(linear_layer(inputs, Nin, Nout))
+
+def ELU_fully_connected_layer(inputs, Nin, Nout):
+    return tf.nn.elu(linear_layer(inputs, Nin, Nout))
 
 
 def preReLU_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
