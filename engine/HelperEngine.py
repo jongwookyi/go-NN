@@ -9,9 +9,9 @@ class HelperEngine:
     def __init__(self, cleanup, level=10):
         # bufsize=1 is line buffered
         if cleanup:
-            command = ["gnugo", "--mode", "gtp", "--level", str(level), "--chinese-rules", "--capture-all-dead", "--never-resign"]
+            command = ["gnugo", "--mode", "gtp", "--level", str(level), "--chinese-rules", "--positional-superko", "--capture-all-dead", "--never-resign"]
         else:
-            command = ["gnugo", "--mode", "gtp", "--level", "1"]
+            command = ["gnugo", "--mode", "gtp", "--level", "1", "--chinese-rules", "--positional-superko"]
         self.proc = subprocess.Popen(command, bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     def send_command(self, command):

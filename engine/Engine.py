@@ -49,6 +49,7 @@ class BaseEngine(object):
 
     def player_passed(self, color):
         self.push_state()
+        self.board.play_pass()
         self.opponent_passed = True
 
     def stone_played(self, x, y, color):

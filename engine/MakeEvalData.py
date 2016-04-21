@@ -29,7 +29,7 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed):
 
     while True:
         feature_planes = feature_maker(reader.board, reader.next_play_color())
-        final_score = +1 if reader.next_player_color() == winner else -1
+        final_score = +1 if reader.next_play_color() == winner else -1
         final_score_arr = np.array([final_score], dtype=np.int8)
 
         writer.push_example((feature_planes, final_score_arr))
@@ -44,29 +44,29 @@ def make_KGS_eval_data():
     feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures
 
     for set_name in ['train', 'val', 'test']:
-        assert False, "need to specify dirs"
-        games_dir = "???"
-        out_dir = "???" % set_name
+        games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/train"
+        out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
 
         writer = NPZ.RandomizingWriter(out_dir=out_dir,
                 names=['feature_planes', 'final_scores'],
-                shapes=[(N,N,Nfeat), (N,N)],
+                shapes=[(N,N,Nfeat), (1,)],
                 dtypes=[np.int8, np.int8],
                 Nperfile=128, buffer_len=50000)
     
         rank_allowed = lambda rank: True
     
-        game_fns = os.listdir(games_dir)
-        random.shuffle(game_fns)
+        sgfs = []
+        for sub_dir in os.listdir(games_dir):
+            for fn in os.listdir(os.path.join(games_dir, sub_dir)):
+                    sgfs.append(os.path.join(games_dir, sub_dir, fn))
+        random.shuffle(sgfs)
+
         num_games = 0
-        for fn in game_fns:
-            print "making influence data from %s" % fn
-            sgf = os.path.join(games_dir, fn)
-    
+        for sgf in sgfs:
+            #print "making eval data from %s" % sgf
             write_game_data(sgf, writer, feature_maker, rank_allowed)
-            
             num_games += 1
-            if num_games % 100 == 0: print "Finished %d games of %d" % (num_games, len(game_fns))
+            if num_games % 100 == 0: print "Finished %d games of %d" % (num_games, len(sgfs))
     
         writer.drain()
 
@@ -74,7 +74,6 @@ def make_KGS_eval_data():
 
 if __name__ == '__main__':
     make_KGS_eval_data()
-    import cProfile
 
 
 

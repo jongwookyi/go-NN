@@ -60,7 +60,7 @@ class RandomizingWriter:
 
 def read_npz(filename, names):
     npz = np.load(filename)
-    ret = tuple(npz[name] for name in names)
+    ret = dict((name, npz[name]) for name in names)
     npz.close()
     return ret
 
@@ -73,7 +73,7 @@ class Loader:
         return read_npz(self.filename_queue.pop(), names)
 
 
-class RandomizingLoader(self, npz_dir):
+class RandomizingLoader:
     def __init__(self, npz_dir, minibatch_size):
         self.filename_queue = []
         self.npz_dir = npz_dir
@@ -82,30 +82,30 @@ class RandomizingLoader(self, npz_dir):
         self.num_saved_examples = 0
 
     def load_more_examples(self, names):
-        print "loading more examples..."
+        #print "loading more examples..."
         if not self.filename_queue:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
             random.shuffle(self.filename_queue)
-            print "GeneralRandomizingLoader: built new filename queue with length", len(self.filename_queue)
+            print "RandomizingLoader: built new filename queue with length", len(self.filename_queue)
         examples = read_npz(self.filename_queue.pop(), ('feature_planes', 'moves'))
         if self.saved_examples == None:
             self.saved_examples = examples
         else:
             for name in names:
-                self.saved_examples[name] = np.concatenate(self.saved_examples[name], examples[name])
+                self.saved_examples[name] = np.concatenate((self.saved_examples[name], examples[name]))
         self.num_saved_examples = self.saved_examples[names[0]].shape[0]
-        print "now num_saved_examples =", num_saved_examples
+        #print "now num_saved_examples =", self.num_saved_examples
 
     def next_minibatch(self, names):
-        print "asked for minibatch of size % when num_saved_examples = %d" % (self.minibatch_size, self.num_saved_examples)
+        #print "asked for minibatch of size %d when num_saved_examples = %d" % (self.minibatch_size, self.num_saved_examples)
         while self.num_saved_examples < self.minibatch_size:
             self.load_more_examples(names)
         batch = {}
         for name in names:
-            batch[name] = self.saved_examples[name][0:minibatch_size,:]
-            self.saved_examples[name] = self.saved_examples[name][minibatch_size:,:]
+            batch[name] = self.saved_examples[name][0:self.minibatch_size,:]
+            self.saved_examples[name] = self.saved_examples[name][self.minibatch_size:,:]
         self.num_saved_examples -= self.minibatch_size
-        print "after returning minibatch, num_saved_examples = %d" % self.num_saved_examples
+        #print "after returning minibatch, num_saved_examples = %d" % self.num_saved_examples
         return batch
 
 
