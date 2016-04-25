@@ -58,6 +58,9 @@ class BaseEngine(object):
         self.opponent_passed = False
         self.board.show()
 
+    def move_was_played(self, move):
+        self.board.play_move(move)
+
     # subclasses must override this
     def pick_move(self, color):
         assert False

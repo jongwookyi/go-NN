@@ -151,6 +151,12 @@ class Board:
         self.simple_ko_vertex = None
         self.move_list.append(None)
         self.color_to_play = flipped_color[self.color_to_play]
+
+    def play_move(self, move):
+        if move.is_play():
+            self.play_stone(move.x, move.y, self.color_to_play)
+        elif move.is_pass():
+            self.play_pass()
             
     #def flip_colors(self):
     #    for x in range(self.N):

@@ -71,6 +71,9 @@ class HelperEngine:
     def final_status_list(self, status):
         return self.send_command("final_status_list %s" % status)
 
+    def final_score(self):
+        return self.send_command("final_score")
+
 
 if __name__ == '__main__':
     helper = HelperEngine()

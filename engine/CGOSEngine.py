@@ -47,10 +47,10 @@ class CGOSEngine(BaseEngine):
         if not self.cleanup_mode:
             self.helper.set_level(5)
             move = self.helper.generate_move(color, cleanup=False)
-            if move.is_pass(): # helper passed
+            if move.is_pass(): 
                 print "CGOSEngine: helper passed! Entering cleanup mode."
                 self.cleanup_mode = True
-            elif move.is_resign(): # helper resigned
+            elif move.is_resign(): 
                 print "CGOSEngine: helper resigned! Resigning."
                 return Move.Resign
             else: # helper didn't pass or resign
@@ -61,10 +61,7 @@ class CGOSEngine(BaseEngine):
             print "CGOSEngine: In cleanup mode: using helper to generate move."
             self.helper.set_level(10)
             move = self.helper.generate_move(color)
-            if move.is_play():
-                self.engine.stone_played(move.x, move.y, color)
-            elif move.is_pass():
-                self.engine.player_passed(color)
+            self.engine.move_was_played(move)
             return move
 
         # otherwise, moves are made by the main engine
@@ -89,6 +86,9 @@ class CGOSEngine(BaseEngine):
 
     def final_status_list(self, status):
         return self.helper.final_status_list(status)
+
+    def final_score(self):
+        return self.helper.final_score()
 
 
 if __name__ == '__main__':

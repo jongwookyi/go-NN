@@ -44,17 +44,15 @@ class KGSEngine(BaseEngine):
         self.helper.set_level(cleanup_level if cleanup else pass_checking_level)
 
         move = self.helper.generate_move(color, cleanup)
-        if move.is_pass():
-            self.engine.player_passed(color)
-        elif move.is_resign():
+        if move.is_resign():
             return Move.Resign
-        elif cleanup: # move is a play, and we are in cleanup mode
-            self.engine.stone_played(move.x, move.y, color)
+        elif move.is_pass() or cleanup:
+            self.engine.move_was_played(move)
             return move
 
         move = self.engine.generate_move(color)
         if move.is_play(): 
-            self.helper.stone_played(move.x, move.y, color)
+            self.helper.move_was_played(move)
         elif move.is_pass(): 
             self.helper.player_passed(color)
         return move
