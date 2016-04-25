@@ -6,13 +6,9 @@ from Board import *
 # Using gnugo to determine when to pass and to play cleanup moves
 
 class HelperEngine:
-    def __init__(self, cleanup, level=10):
-        # bufsize=1 is line buffered
-        if cleanup:
-            command = ["gnugo", "--mode", "gtp", "--level", str(level), "--chinese-rules", "--positional-superko", "--capture-all-dead", "--never-resign"]
-        else:
-            command = ["gnugo", "--mode", "gtp", "--level", "1", "--chinese-rules", "--positional-superko"]
-        self.proc = subprocess.Popen(command, bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    def __init__(self, level=10):
+        command = ["gnugo", "--mode", "gtp", "--level", str(level), "--chinese-rules", "--positional-superko"]
+        self.proc = subprocess.Popen(command, bufsize=1, stdin=subprocess.PIPE, stdout=subprocess.PIPE) # bufsize=1 is line buffered
 
     def send_command(self, command):
         print "HelperEngine: sending command \"%s\"" % command
@@ -52,8 +48,12 @@ class HelperEngine:
     def stone_played(self, x, y, color):
         self.send_command("play %s %s" % (color_names[color], str_from_coords(x, y)))
 
-    def generate_move(self, color):
-        response = self.send_command("genmove %s" % color_names[color])
+    def set_level(self, level):
+        self.send_command("level %d" % level)
+
+    def generate_move(self, color, cleanup=False):
+        cmd = "kgs-genmove_cleanup" if cleanup else "genmove"
+        response = self.send_command("%s %s" % (cmd, color_names[color]))
         if 'pass' in response.lower():
             return Move.Pass
         elif 'resign' in response.lower():

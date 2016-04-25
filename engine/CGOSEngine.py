@@ -10,8 +10,7 @@ from HelperEngine import HelperEngine
 class CGOSEngine(BaseEngine):
     def __init__(self, engine):
         self.engine = engine
-        self.helper_pass = HelperEngine(cleanup=False)
-        self.helper_cleanup = HelperEngine(cleanup=True)
+        self.helper= HelperEngine()
 
     # subclasses must override this
     def name(self):
@@ -23,82 +22,73 @@ class CGOSEngine(BaseEngine):
 
     def set_board_size(self, N):
         return self.engine.set_board_size(N) and \
-               self.helper_pass.set_board_size(N) and \
-               self.helper_cleanup.set_board_size(N)
+               self.helper.set_board_size(N) and \
 
     def clear_board(self):
         self.engine.clear_board()
-        self.helper_pass.clear_board()
-        self.helper_cleanup.clear_board()
+        self.helper.clear_board()
         self.cleanup_mode = False
 
     def set_komi(self, komi):
         self.engine.set_komi(komi)
-        self.helper_pass.set_komi(komi)
-        self.helper_cleanup.set_komi(komi)
+        self.helper.set_komi(komi)
 
     def player_passed(self, color):
         self.engine.player_passed(color)
-        self.helper_pass.player_passed(color)
-        self.helper_cleanup.player_passed(color)
+        self.helper.player_passed(color)
 
     def stone_played(self, x, y, color):
         self.engine.stone_played(x, y, color)
-        self.helper_pass.stone_played(x, y, color)
-        self.helper_cleanup.stone_played(x, y, color)
+        self.helper.stone_played(x, y, color)
 
     def generate_move(self, color, cleanup=False):
         # enter cleanup mode if helper_pass passes.
         # if it resigns, resign.
         if not self.cleanup_mode:
-            helper_move = self.helper_pass.generate_move(color)
-            if helper_move.is_pass(): # helper passed
-                print "CGOSEngine: helper_pass passed! Entering cleanup mode."
+            self.helper.set_level(5)
+            move = self.helper.generate_move(color, cleanup=False)
+            if move.is_pass(): # helper passed
+                print "CGOSEngine: helper passed! Entering cleanup mode."
                 self.cleanup_mode = True
-            elif helper_move.is_resign(): # helper resigned
-                print "CGOSEngine: helper_pass resigned! Resigning."
+            elif move.is_resign(): # helper resigned
+                print "CGOSEngine: helper resigned! Resigning."
                 return Move.Resign
             else: # helper didn't pass or resign
                 self.helper_pass.undo() # helper must support this
 
         # in cleanup mode, moves are made by helper_cleanup
         if self.cleanup_mode:
-            print "CGOSEngine: In cleanup mode: using helper_cleanup to generate move."
-            move = self.helper_cleanup.generate_move(color)
+            print "CGOSEngine: In cleanup mode: using helper to generate move."
+            self.helper.set_level(10)
+            move = self.helper.generate_move(color)
             if move.is_play():
                 self.engine.stone_played(move.x, move.y, color)
-                self.helper_pass.stone_played(move.x, move.y, color)
             elif move.is_pass():
                 self.engine.player_passed(color)
-                self.helper_pass.player_passed(color)
             return move
 
         # otherwise, moves are made by the main engine
         print "CGOSEngine: Generating move using main engine."
         move = self.engine.generate_move(color)
         if move.is_play(): 
-            self.helper_pass.stone_played(move.x, move.y, color)
-            self.helper_cleanup.stone_played(move.x, move.y, color)
+            self.helper.stone_played(move.x, move.y, color)
         elif move.is_pass(): 
-            self.helper_pass.player_passed(color)
-            self.helper_cleanup.player_passed(color)
+            self.helper.player_passed(color)
         return move
 
     def undo(self):
         self.engine.undo()
-        self.helper_pass.undo()
-        self.helper_cleanup.undo()
+        self.helper.undo()
 
     def quit(self):
         self.engine.quit()
-        self.helper_pass.quit()
-        self.helper_cleanup.quit()
+        self.helper.quit()
 
     def supports_final_status_list(self):
         return True
 
     def final_status_list(self, status):
-        return self.helper_cleanup.final_status_list(status)
+        return self.helper.final_status_list(status)
 
 
 if __name__ == '__main__':

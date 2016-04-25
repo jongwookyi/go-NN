@@ -8,8 +8,7 @@ from HelperEngine import HelperEngine
 class KGSEngine(BaseEngine):
     def __init__(self, engine):
         self.engine = engine
-        self.helper_pass = HelperEngine(cleanup=False)
-        self.helper_cleanup = HelperEngine(cleanup=True)
+        self.helper = HelperEngine()
 
     # subclasses must override this
     def name(self):
@@ -21,74 +20,58 @@ class KGSEngine(BaseEngine):
 
     def set_board_size(self, N):
         return self.engine.set_board_size(N) and \
-               self.helper_pass.set_board_size(N) and \
-               self.helper_cleanup.set_board_size(N)
+               self.helper.set_board_size(N) and \
 
     def clear_board(self):
         self.engine.clear_board()
-        self.helper_pass.clear_board()
-        self.helper_cleanup.clear_board()
+        self.helper.clear_board()
 
     def set_komi(self, komi):
         self.engine.set_komi(komi)
-        self.helper_pass.set_komi(komi)
-        self.helper_cleanup.set_komi(komi)
+        self.helper.set_komi(komi)
 
     def player_passed(self, color):
         self.engine.player_passed(color)
-        self.helper_pass.player_passed(color)
-        self.helper_cleanup.player_passed(color)
+        self.helper.player_passed(color)
 
     def stone_played(self, x, y, color):
         self.engine.stone_played(x, y, color)
-        self.helper_pass.stone_played(x, y, color)
-        self.helper_cleanup.stone_played(x, y, color)
+        self.helper.stone_played(x, y, color)
 
     def generate_move(self, color, cleanup=False):
-        if cleanup:
-            move = self.helper_cleanup.generate_move(color)
-            if move.is_play():
-                self.engine.stone_played(move.x, move.y, color)
-                self.helper_pass.stone_played(move.x, move.y, color)
-            elif move.is_pass():
-                self.engine.player_passed(color)
-                self.helper_pass.player_passed(color)
+        pass_checking_level = 5
+        cleanup_level = 10
+        self.helper.set_level(cleanup_level if cleanup else pass_checking_level)
+
+        move = self.helper.generate_move(color, cleanup)
+        if move.is_pass():
+            self.engine.player_passed(color)
+        elif move.is_resign():
+            return Move.Resign
+        elif cleanup: # move is a play, and we are in cleanup mode
+            self.engine.stone_played(move.x, move.y, color)
             return move
 
-        helper_move = self.helper_pass.generate_move(color)
-        if helper_move.is_pass(): # helper passed
-            self.engine.player_passed(color)
-            self.helper_cleanup.player_passed(color)
-            return Move.Pass
-        elif helper_move.is_resign(): # helper resigned
-            return Move.Resign
-        else: # helper didn't pass or resign
-            if helper_move.is_play():
-                self.helper_pass.undo() # helper must support this
-            move = self.engine.generate_move(color)
-            if move.is_play(): 
-                self.helper_pass.stone_played(move.x, move.y, color)
-                self.helper_cleanup.stone_played(move.x, move.y, color)
-            elif move.is_pass(): 
-                self.helper_pass.player_passed(color)
-                self.helper_cleanup.player_passed(color)
-            return move
+        move = self.engine.generate_move(color)
+        if move.is_play(): 
+            self.helper.stone_played(move.x, move.y, color)
+        elif move.is_pass(): 
+            self.helper.player_passed(color)
+        return move
 
     def undo(self):
         self.engine.undo()
-        self.helper_pass.undo()
-        self.helper_cleanup.undo()
+        self.helper.undo()
 
     def quit(self):
         self.engine.quit()
-        self.helper_pass.quit()
-        self.helper_cleanup.quit()
+        self.helper.quit()
 
     def supports_final_status_list(self):
         return True
 
     def final_status_list(self, status):
-        return self.helper_cleanup.final_status_list(status)
+        return self.helper.final_status_list(status)
 
     def last_move_probs(self):
         return engine.last_move_probs()
