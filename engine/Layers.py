@@ -32,7 +32,7 @@ def linear_layer(inputs, Nin, Nout):
     stddev = math.sqrt(1.0 / Nin)
     print "linear layer using stddev =", stddev
     weights = tf.Variable(tf.truncated_normal([Nin, Nout], stddev=0.1))
-    bias = tf.Variable(tf.constant(0.1, shape=[Nout]))
+    bias = tf.Variable(tf.constant(0.0, shape=[Nout]))
     out = tf.matmul(inputs, weights) + bias
     return out
 

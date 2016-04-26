@@ -22,7 +22,7 @@ class CGOSEngine(BaseEngine):
 
     def set_board_size(self, N):
         return self.engine.set_board_size(N) and \
-               self.helper.set_board_size(N) and \
+               self.helper.set_board_size(N)
 
     def clear_board(self):
         self.engine.clear_board()
@@ -42,7 +42,7 @@ class CGOSEngine(BaseEngine):
         self.helper.stone_played(x, y, color)
 
     def generate_move(self, color, cleanup=False):
-        # enter cleanup mode if helper_pass passes.
+        # enter cleanup mode if helper passes.
         # if it resigns, resign.
         if not self.cleanup_mode:
             self.helper.set_level(5)
@@ -54,13 +54,13 @@ class CGOSEngine(BaseEngine):
                 print "CGOSEngine: helper resigned! Resigning."
                 return Move.Resign
             else: # helper didn't pass or resign
-                self.helper_pass.undo() # helper must support this
+                self.helper.undo() # helper must support this
 
         # in cleanup mode, moves are made by helper_cleanup
         if self.cleanup_mode:
             print "CGOSEngine: In cleanup mode: using helper to generate move."
             self.helper.set_level(10)
-            move = self.helper.generate_move(color)
+            move = self.helper.generate_move(color, cleanup=True)
             self.engine.move_was_played(move)
             return move
 

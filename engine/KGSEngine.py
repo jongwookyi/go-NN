@@ -20,7 +20,7 @@ class KGSEngine(BaseEngine):
 
     def set_board_size(self, N):
         return self.engine.set_board_size(N) and \
-               self.helper.set_board_size(N) and \
+               self.helper.set_board_size(N)
 
     def clear_board(self):
         self.engine.clear_board()
@@ -49,10 +49,12 @@ class KGSEngine(BaseEngine):
         elif move.is_pass() or cleanup:
             self.engine.move_was_played(move)
             return move
+        else: 
+            self.helper.undo()
 
         move = self.engine.generate_move(color)
         if move.is_play(): 
-            self.helper.move_was_played(move)
+            self.helper.stone_played(move.x, move.y, color)
         elif move.is_pass(): 
             self.helper.player_passed(color)
         return move
