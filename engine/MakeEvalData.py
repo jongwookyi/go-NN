@@ -43,8 +43,8 @@ def make_KGS_eval_data():
     Nfeat = 21
     feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures
 
-    for set_name in ['train', 'val', 'test']:
-        games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/train"
+    for set_name in ['val', 'train', 'test']:
+        games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
         out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
 
         writer = NPZ.RandomizingWriter(out_dir=out_dir,

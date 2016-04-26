@@ -15,6 +15,8 @@ def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
     loaded_feature_planes = batch['feature_planes'].astype(np.float32)
     loaded_scores = batch['final_scores'].astype(np.int32) # BIT ME HARD.
 
+    loaded_scores = np.ravel(loaded_scores) # flatten to 1D
+
     apply_normalization(loaded_feature_planes)
 
     apply_random_symmetries(loaded_feature_planes)
@@ -27,11 +29,13 @@ def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
 def loss_func(score_op):
     final_scores = tf.placeholder(tf.float32, shape=[None])
 
-    mean_sq_err = tf.reduce_mean(tf.square(score_op - final_scores), 'mean_sq_err')
+    #mean_sq_err = tf.reduce_mean(tf.square(score_op - final_scores), name='mean_sq_err')
+    my_loss = tf.reduce_mean(-tf.log(tf.constant(1.0) - tf.constant(0.5) * tf.abs(score_op - final_scores), 'my_loss'))
 
     correct_prediction = tf.equal(tf.sign(score_op), tf.sign(final_scores))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    return final_scores, mean_sq_err, accuracy
+    #return final_scores, mean_sq_err, accuracy
+    return final_scores, my_loss, accuracy
 
 
 

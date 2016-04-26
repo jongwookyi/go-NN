@@ -3,7 +3,7 @@ from Layers import *
 
 class Conv11PosDepFC1ELU: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/conv12posdepELU_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/eval_conv11posdepfc1ELU_N%d_fe%d" % (N, Nfeat)
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -22,6 +22,14 @@ class Conv11PosDepFC1ELU:
         conv10 = ELU_conv_pos_dep_bias(conv9, 3, NK, NK, N, 'conv10')
         conv11 = ELU_conv_pos_dep_bias(conv10, 3, NK, NK, N, 'conv11')
         conv11_flat = tf.reshape(conv11, [-1, NK*N*N])
-        fc = ELU_fully_connected_layer(conv11_float, NK*N*N, Nfc)
+        fc = ELU_fully_connected_layer(conv11_flat, NK*N*N, Nfc)
         score = tf.tanh(linear_layer(fc, Nfc, 1))
         return score
+
+
+class Zero:
+    def __init__(self, N, Nfeat):
+        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/zero_N%d_fe%d" % (N, Nfeat)
+    def inference(self, feature_planes, N, Nfeat):
+        dummy = tf.Variable(tf.constant(0.0, dtype=tf.float32), name='dummy')
+        return dummy * tf.constant(0.0, dtype=tf.float32, shape=[128])

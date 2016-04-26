@@ -32,8 +32,26 @@ Move.Pass = Move(-1, -1)
 Move.Resign = Move(-2, -2)
 
 def str_from_map(float_map):
+    print "float_map.shape =", float_map.shape
     str_map = [[str(float_map[x,y]) for x in xrange(float_map.shape[0])] 
                                  for y in xrange(float_map.shape[1]-1, -1, -1)]
+    big_str = "\n".join(" ".join(val for val in row) for row in str_map)
+    return big_str
+
+def rgbstr_from_prob(prob):
+    r = prob
+    g = 0
+    b = 1 - prob
+    if r == 1: r -= 1e-12
+    if g == 1: g -= 1e-12
+    if b == 1: b -= 1e-12
+    print "r,g,b =", r, g, b
+    return "#%02x%02x%02x" % (int(256*r), int(256*g), int(256*b))
+
+def rgbstr_from_map(float_map):
+    print "float_map.shape =", float_map.shape
+    str_map = [[rgbstr_from_prob(float_map[x,y]) for x in xrange(float_map.shape[0])] 
+                                                 for y in xrange(float_map.shape[1]-1, -1, -1)]
     big_str = "\n".join(" ".join(val for val in row) for row in str_map)
     return big_str
 
@@ -126,7 +144,7 @@ class GTP:
         print "GTP: got gogui-analyze_commands"
         analyze_commands = ["string/Hello World/hello_world",
                             "dboard/Show Influence Map/show_influence_map",
-                            "dboard/Show Move Probabilities/show_move_probs"]
+                            "cboard/Show Move Probabilities/show_move_probs"]
         self.tell_client("\n".join(analyze_commands))
 
     def hello_world(self):
@@ -144,12 +162,12 @@ class GTP:
 
     def show_move_probs(self):
         print "GTP: got show_move_probs"
-        try:
-            move_probs = self.engine.last_move_probs()
-        except:
-            self.error_client("Not supported")
-            return
-        self.tell_client(str_from_map(move_probs))
+        #try:
+        move_probs = self.engine.get_last_move_probs()
+        #except:
+        #    self.error_client("Not supported")
+        #    return
+        self.tell_client(rgbstr_from_map(move_probs))
 
     def game_over(self):
         #exit(0)

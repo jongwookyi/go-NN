@@ -5,7 +5,7 @@ def conv(inputs, diameter, Nin, Nout, name):
     fan_in = diameter * diameter * Nin
     #stddev = math.sqrt(2.0 / fan_in)
     print "WARNING: USING DIFFERENT STDDEV FOR CONV!"
-    stddev = 0.6 * math.sqrt(2.0 / fan_in)
+    stddev = math.sqrt(1.0 / fan_in)
     kernel = tf.Variable(tf.truncated_normal([diameter, diameter, Nin, Nout], stddev=stddev), name=name+'_kernel')
     return tf.nn.conv2d(inputs, kernel, [1, 1, 1, 1], padding='SAME')
 
@@ -27,7 +27,9 @@ def ELU_conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name):
     return tf.nn.elu(conv_pos_dep_bias(inputs, diameter, Nin, Nout, N, name))
 
 def linear_layer(inputs, Nin, Nout):
-    stddev = math.sqrt(2.0 / Nin)
+    #stddev = math.sqrt(2.0 / Nin)
+    print "WARNING: USING DIFFERENT STDDEV FOR LINEAR!"
+    stddev = math.sqrt(1.0 / Nin)
     print "linear layer using stddev =", stddev
     weights = tf.Variable(tf.truncated_normal([Nin, Nout], stddev=0.1))
     bias = tf.Variable(tf.constant(0.1, shape=[Nout]))

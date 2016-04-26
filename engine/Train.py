@@ -11,6 +11,8 @@ import MoveModels
 import MoveTraining
 import InfluenceModels
 import InfluenceTraining
+import EvalModels
+import EvalTraining
 import NPZ
 import Normalization
 
@@ -85,13 +87,13 @@ def train_step(total_loss, accuracy, learning_rate, momentum=None):
     apply_gradient_op = opt.apply_gradients(grads)
 
     # Add histograms for trainable variables.
-    for var in tf.trainable_variables():
-        tf.histogram_summary(var.op.name, var)
+    #for var in tf.trainable_variables():
+    #    tf.histogram_summary(var.op.name, var)
 
     # Add histograms for gradients.
-    for grad, var in grads:
-        if grad:
-            tf.histogram_summary(var.op.name + '/gradients', grad)
+    #for grad, var in grads:
+    #    if grad:
+    #        tf.histogram_summary(var.op.name + '/gradients', grad)
 
     with tf.control_dependencies([apply_gradient_op]):
         train_op = tf.no_op(name='train')
@@ -212,6 +214,7 @@ if __name__ == "__main__":
     #Nfeat = 15
     Nfeat = 21
     
+    """
     #model = Models.Conv6PosDep(N, Nfeat) 
     #model = Models.Conv8PosDep(N, Nfeat) 
     #model = Models.Conv10PosDep(N, Nfeat) 
@@ -231,6 +234,15 @@ if __name__ == "__main__":
     normalization = Normalization.apply_featurewise_normalization_C
     build_feed_dict = MoveTraining.build_feed_dict
     loss_func = MoveTraining.loss_func
+    """
+
+    model = EvalModels.Conv11PosDepFC1ELU(N, Nfeat)
+    #model = EvalModels.Zero(N, Nfeat)
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
+    normalization = Normalization.apply_featurewise_normalization_C
+    build_feed_dict = EvalTraining.build_feed_dict
+    loss_func = EvalTraining.loss_func
 
     """
     #model = InfluenceModels.Conv4PosDep(N, Nfeat)

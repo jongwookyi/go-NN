@@ -136,7 +136,7 @@ class TFEngine(BaseEngine):
         self.book = Book.load_GoGoD_book()
         #self.book = None
 
-        self.last_move_probs = np.zeros((self.model.N * self.model.N,))
+        self.last_move_probs = np.zeros((self.model.N, self.model.N,))
 
         # build the graph
         with tf.Graph().as_default():
@@ -192,7 +192,7 @@ class TFEngine(BaseEngine):
 
         logit_batch = self.sess.run(self.logits, feed_dict)
         move_logits = average_logits_over_symmetries(logit_batch, self.model.N)
-        softmax_temp = 10.0
+        softmax_temp = 1.0
         move_probs = softmax(move_logits, softmax_temp)
 
         #for y in xrange(self.model.N):
@@ -221,12 +221,11 @@ class TFEngine(BaseEngine):
 
         move_x,move_y = ensure_politeness(self.board, (move_x, move_y))
 
-        self.last_move_probs = move_probs
-        if color == Color.Black: self.last_move_probs *= -1
+        self.last_move_probs = move_probs.reshape((self.board.N, self.board.N))
 
         return Move(move_x, move_y)
 
-    def last_move_probs(self):
+    def get_last_move_probs(self):
         return self.last_move_probs
 
 

@@ -71,5 +71,5 @@ class KGSEngine(BaseEngine):
     def final_status_list(self, status):
         return self.helper.final_status_list(status)
 
-    def last_move_probs(self):
-        return engine.last_move_probs()
+    def get_last_move_probs(self):
+        return self.engine.get_last_move_probs()
