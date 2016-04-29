@@ -144,12 +144,18 @@ class GTP:
         print "GTP: got gogui-analyze_commands"
         analyze_commands = ["string/Hello World/hello_world",
                             "dboard/Show Influence Map/show_influence_map",
-                            "cboard/Show Move Probabilities/show_move_probs"]
+                            "cboard/Show Move Probabilities/show_move_probs",
+                            "string/Evaluation/get_position_eval"]
         self.tell_client("\n".join(analyze_commands))
 
     def hello_world(self):
         print "GTP: got hello_world"
         self.tell_client("hello world!")
+
+    def get_position_eval(self):
+        print "GTP: got get_position_eval"
+        pos_eval = self.engine.get_position_eval()
+        self.tell_client(str(pos_eval))
 
     def show_influence_map(self):
         print "GTP: got show_influence_map"
@@ -218,6 +224,8 @@ class GTP:
                 self.show_influence_map()
             elif line.startswith("show_move_probs"):
                 self.show_move_probs()
+            elif line.startswith("get_position_eval"):
+                self.get_position_eval()
             elif line.startswith("kgs-game_over"):
                 self.game_over()
             elif line.startswith("final_status_list"):

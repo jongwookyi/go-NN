@@ -89,6 +89,7 @@ class SGFReader:
         self.white_rank = None
         self.result = None
         self.board = None
+        self.komi = None
         for property_name, property_data in parser:
             if property_name == "SZ": # board size
                 self.board = Board(int(property_data))
@@ -108,6 +109,8 @@ class SGFReader:
                 self.white_rank = property_data
             elif property_name == "RE": # result
                 self.result = property_data
+            elif property_name == "KM": # komi
+                self.komi = property_data
 
         if not self.board:
             self.board = Board(19) # assume 19x19 if we didn't see a size

@@ -97,6 +97,9 @@ def make_simple_ko_plane(array, board):
     if board.simple_ko_vertex:
         array[board.simple_ko_vertex] = 1
 
+def make_playcolor_plane(plane, play_color):
+    plane.fill(1 if play_color == Color.Black else 0)
+
 # us, them, empty, ones
 def make_feature_planes_stones(board, play_color):
     Nplanes = 4
@@ -157,6 +160,23 @@ def make_feature_planes_stones_4liberties_4history_ko_4captures(board, play_colo
     make_simple_ko_plane(feature_planes[:,:,16], board)
     max_captures = 4
     make_capture_count_planes(feature_planes[:,:,17:21], board, max_captures, play_color)
+    return feature_planes
+
+def make_feature_planes_stones_4liberties_4history_ko_4captures_playcolor(board, play_color):
+    Nplanes = 22
+    feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
+    make_color_plane(feature_planes[:,:,0], board, play_color)
+    make_color_plane(feature_planes[:,:,1], board, flipped_color[play_color])
+    make_color_plane(feature_planes[:,:,2], board, Color.Empty)
+    make_ones_plane(feature_planes[:,:,3], board)
+    max_liberties = 4
+    make_liberty_count_planes(feature_planes[:,:,4:12], board, 2*max_liberties, play_color)
+    max_lookback = 4
+    make_history_planes(feature_planes[:,:,12:16], board, max_lookback)
+    make_simple_ko_plane(feature_planes[:,:,16], board)
+    max_captures = 4
+    make_capture_count_planes(feature_planes[:,:,17:21], board, max_captures, play_color)
+    make_playcolor_plane(feature_planes[:,:,21], play_color)
     return feature_planes
 
 # needs to be rewritten

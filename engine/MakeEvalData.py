@@ -9,12 +9,19 @@ import Features
 import NPZ
 
 
-def write_game_data(sgf, writer, feature_maker, rank_allowed):
+def write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed):
     reader = SGFReader(sgf)
 
     if not rank_allowed(reader.black_rank) or not rank_allowed(reader.white_rank):
-        print "skipping game b/c of disallowed rank. ranks are %s, %s" % (reader.black_rank, reader.white_rank)
+        print "skipping %s b/c of disallowed rank. ranks are %s, %s" % (sgf, reader.black_rank, reader.white_rank)
         return
+
+    if reader.komi == None:
+        print "skiping %s b/c there's no komi given" % sgf
+        return
+
+    if not komi_allowed(reader.komi):
+        print "skipping %s b/c of non-allowed komi \"%s\"" % (sgf, reader.komi)
 
     if reader.result == None:
         print "skipping %s because there's no result given" % sgf
@@ -54,6 +61,8 @@ def make_KGS_eval_data():
                 Nperfile=128, buffer_len=50000)
     
         rank_allowed = lambda rank: True
+
+        komi_allowed = lambda komi: 6.5 <= float(komi) <= 7.5
     
         sgfs = []
         for sub_dir in os.listdir(games_dir):
@@ -64,7 +73,7 @@ def make_KGS_eval_data():
         num_games = 0
         for sgf in sgfs:
             #print "making eval data from %s" % sgf
-            write_game_data(sgf, writer, feature_maker, rank_allowed)
+            write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed)
             num_games += 1
             if num_games % 100 == 0: print "Finished %d games of %d" % (num_games, len(sgfs))
     

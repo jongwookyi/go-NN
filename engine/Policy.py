@@ -1,6 +1,6 @@
 
 
-class IdiotPolicy:
+class AllPolicy:
     def suggest_moves(self, board):
         moves = []
         for x in xrange(board.N):
