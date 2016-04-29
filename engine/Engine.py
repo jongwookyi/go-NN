@@ -59,7 +59,10 @@ class BaseEngine(object):
         self.board.show()
 
     def move_was_played(self, move):
-        self.board.play_move(move)
+        if move.is_play():
+            self.stone_played(move.x, move.y, self.board.color_to_play)
+        elif move.is_pass():
+            self.player_passed(self.board.color_to_play)
 
     # subclasses must override this
     def pick_move(self, color):

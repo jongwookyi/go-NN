@@ -3,6 +3,7 @@ import numpy as np
 import os
 import os.path
 import random
+import math
 from Board import *
 
 def make_color_plane(array, board, color):
@@ -100,6 +101,18 @@ def make_simple_ko_plane(array, board):
 def make_playcolor_plane(plane, play_color):
     plane.fill(1 if play_color == Color.Black else 0)
 
+# A plane filled with the (floor of the) value of the komi.
+# The komi is given relative to the color to play. So if
+# black is to play the komi is negated.
+min_komi = np.iinfo(np.int8).min
+max_komi = np.iinfo(np.int8).max
+def make_komi_plane(plane, play_color, komi):
+    if play_color == Color.Black:
+        komi = -komi
+    komi = int(math.floor(komi))
+    assert min_komi <= komi <= max_komi
+    plane.fill(komi)
+
 # us, them, empty, ones
 def make_feature_planes_stones(board, play_color):
     Nplanes = 4
@@ -162,7 +175,7 @@ def make_feature_planes_stones_4liberties_4history_ko_4captures(board, play_colo
     make_capture_count_planes(feature_planes[:,:,17:21], board, max_captures, play_color)
     return feature_planes
 
-def make_feature_planes_stones_4liberties_4history_ko_4captures_playcolor(board, play_color):
+def make_feature_planes_stones_4liberties_4history_ko_4captures_komi(board, play_color, komi):
     Nplanes = 22
     feature_planes = np.zeros((board.N, board.N, Nplanes), dtype=np.int8)
     make_color_plane(feature_planes[:,:,0], board, play_color)
@@ -176,7 +189,7 @@ def make_feature_planes_stones_4liberties_4history_ko_4captures_playcolor(board,
     make_simple_ko_plane(feature_planes[:,:,16], board)
     max_captures = 4
     make_capture_count_planes(feature_planes[:,:,17:21], board, max_captures, play_color)
-    make_playcolor_plane(feature_planes[:,:,21], play_color)
+    make_komi_plane(feature_planes[:,:,21], play_color, komi)
     return feature_planes
 
 # needs to be rewritten

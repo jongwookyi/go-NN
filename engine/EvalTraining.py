@@ -16,7 +16,7 @@ def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
     batch = loader.next_minibatch(('feature_planes', 'final_scores'))
     b = time.time()
     loaded_feature_planes = batch['feature_planes'].astype(np.float32)
-    loaded_scores = batch['final_scores'].astype(np.int32) # BIT ME HARD.
+    loaded_scores = batch['final_scores'].astype(np.float32) # BIT ME HARD.
     c = time.time()
 
     loaded_scores = np.ravel(loaded_scores) # flatten to 1D
@@ -29,7 +29,7 @@ def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
     apply_random_symmetries(loaded_feature_planes)
     f = time.time()
 
-    #print "b-a = %f, c-b = %f, d-c = %f, e-d = %f, f-e = %f" % ((b-a,c-b,d-c,e-d,f-e))
+    print "b-a = %f, c-b = %f, d-c = %f, e-d = %f, f-e = %f" % ((b-a,c-b,d-c,e-d,f-e))
 
     #N = loaded_feature_planes.shape[1]
 

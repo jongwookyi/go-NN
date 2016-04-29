@@ -2,6 +2,8 @@
 import numpy as np
 import random
 import os
+import multiprocessing
+import time
 
 class RandomizingWriter:
     def __init__(self, out_dir, names, shapes, dtypes, Nperfile, buffer_len):
@@ -60,7 +62,7 @@ class RandomizingWriter:
 
 def read_npz(filename, names):
     npz = np.load(filename)
-    ret = dict((name, npz[name]) for name in names)
+    ret = dict((name, npz[name].copy()) for name in names)
     npz.close()
     return ret
 
@@ -71,7 +73,6 @@ class Loader:
         return len(self.filename_queue) > 0
     def next_minibatch(self, names):
         return read_npz(self.filename_queue.pop(), names)
-
 
 class RandomizingLoader:
     def __init__(self, npz_dir, minibatch_size):
@@ -109,67 +110,29 @@ class RandomizingLoader:
         return batch
 
 
-"""
-class RandomizingLoader:
-    def __init__(self, npz_dir):
-        self.filename_queue = None
+def async_worker(q, npz_dir, minibatch_size, names):
+    loader = RandomizingLoader(npz_dir, minibatch_size)
+    while True:
+        batch = loader.next_minibatch(names)
+        q.put(batch, block=True) # will block if queue is full
+
+class AsyncRandomizingLoader:
+    def __init__(self, npz_dir, minibatch_size):
         self.npz_dir = npz_dir
+        self.minibatch_size = minibatch_size
+        self.q = multiprocessing.Queue(maxsize=5)
+        self.process = None
     def next_minibatch(self, names):
-        if not self.filename_queue:
-            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
-            random.shuffle(self.filename_queue)
-            print "RandomizingLoader: built new filename queue with length", len(self.filename_queue)
-        return read_npz(self.filename_queue.pop(), names)
-
-
-class GroupingRandomizingLoader:
-    def __init__(self, npz_dir, Ngroup):
-        self.filename_queue = []
-        self.npz_dir = npz_dir
-        self.Ngroup = Ngroup
-    def next_minibatch(self, names):
-        if len(self.filename_queue) < self.Ngroup:
-            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
-            random.shuffle(self.filename_queue)
-            print "GroupingRandomizingLoader: built new filename queue with length", len(self.filename_queue)
-        components = [read_npz(self.filename_queue.pop(), ('feature_planes', 'moves')) for i in xrange(self.Ngroup)]
-        Nperfile = components[0][0].shape[0]
-        N = components[0][0].shape[1]
-        Nfeat = components[0][0].shape[3]
-        grouped_features = np.empty((Nperfile * self.Ngroup, N, N, Nfeat), dtype=np.int8)
-        grouped_moves = np.empty((Nperfile * self.Ngroup, 2), dtype=np.int8)
-        for i in xrange(self.Ngroup):
-            start = i * Nperfile
-            end = (i+1) * Nperfile
-            grouped_features[start:end,:,:,:], grouped_moves[start:end,:] = components[i]
-        return grouped_features, grouped_moves
-
-class SplittingRandomizingLoader:
-    def __init__(self, npz_dir, Nsplit):
-        self.filename_queue = []
-        self.npz_dir = npz_dir
-        self.Nsplit = Nsplit
-        self.Nsaved = 0
-    def next_minibatch(self, names):
-        if not self.filename_queue:
-            self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
-            random.shuffle(self.filename_queue)
-            print "RandomizingNpzMinibatcher: built new filename queue with length", len(self.filename_queue)
-        if self.Nsaved == 0:
-            self.saved_batches = dict((name, []) for name in names)        
-            big_batch = read_npz(self.filename_queue.pop(), names)
-            for n,name in enumerate(names):
-                Nbig = big_batch[n].shape[0]
-                assert Nbig % self.Nsplit == 0
-                for i in range(self.Nsplit):
-                    start = i*Nbig/self.Nsplit
-                    end = (i+1)*Nbig/self.Nsplit
-                    self.saved_batches[name].append(big_batch[n][start:end,:])
-            self.Nsaved += self.Nsplit
-        self.Nsaved -= 1
-        return tuple(self.saved_batches[name].pop() for name in names)
-"""
-
+        if self.process == None:
+            print "AsyncRandomzingLoader launching worker process."
+            self.process = multiprocessing.Process(target=async_worker, args=(self.q, self.npz_dir, self.minibatch_size, names))
+            self.process.daemon = True
+            self.process.start()
+        start_time = time.time()
+        batch = self.q.get(block=True, timeout=5)
+        print "queue get took %.3f seconds, now q.qsize() = %d" % (time.time() - start_time, self.q.qsize())
+        return batch
+        
 
 
 

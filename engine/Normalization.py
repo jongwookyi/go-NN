@@ -33,13 +33,13 @@ def apply_featurewise_normalization_C(feature_planes):
             feature_rescaling_factors=np.array([2.815, 2.802, 2.187, 2.148, 10, 7.585, 6.266, 3.335, 10, 7.643, 6.242, 3.305, 10, 10, 
                                                 10, 10, 10, 10, 10, 10, 10]))
 
-# like C but for Features.make_feature_planes_stones_4liberties_4history_ko_4captures
+# like C but for Features.make_feature_planes_stones_4liberties_4history_ko_4captures_komi. 
 def apply_featurewise_normalization_D(feature_planes):
     apply_featurewise_normalization(feature_planes,
             feature_means=np.array([1.482e-01, 1.498e-01, 7.021e-01, 0.682, 4.428e-03, 1.769e-02, 2.616e-02, 9.988e-02, 4.065e-03, 1.742e-02, 2.636e-02, 1.019e-01, 2.756e-03, 2.745e-03,
-                                    2.732e-03, 2.720e-03, 7.553e-05, 2.534e-03, 3.763e-04, 1.052e-04, 7.250e-05, 0.5]),
+                                    2.732e-03, 2.720e-03, 7.553e-05, 2.534e-03, 3.763e-04, 1.052e-04, 7.250e-05, 0.0]),
             feature_rescaling_factors=np.array([2.815, 2.802, 2.187, 2.148, 10, 7.585, 6.266, 3.335, 10, 7.643, 6.242, 3.305, 10, 10, 
-                                                10, 10, 10, 10, 10, 10, 10, 2]))
+                                                10, 10, 10, 10, 10, 10, 10, 0.2]))
 
 
 

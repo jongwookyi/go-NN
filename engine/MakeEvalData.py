@@ -19,8 +19,8 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed):
     if reader.komi == None:
         print "skiping %s b/c there's no komi given" % sgf
         return
-
-    if not komi_allowed(reader.komi):
+    komi = float(reader.komi)
+    if not komi_allowed(komi):
         print "skipping %s b/c of non-allowed komi \"%s\"" % (sgf, reader.komi)
 
     if reader.result == None:
@@ -35,7 +35,7 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed):
         return
 
     while True:
-        feature_planes = feature_maker(reader.board, reader.next_play_color())
+        feature_planes = feature_maker(reader.board, reader.next_play_color(), komi)
         final_score = +1 if reader.next_play_color() == winner else -1
         final_score_arr = np.array([final_score], dtype=np.int8)
 
@@ -47,12 +47,12 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed):
 
 def make_KGS_eval_data():
     N = 19
-    Nfeat = 21
-    feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures
+    Nfeat = 22
+    feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures_komi
 
-    for set_name in ['val', 'train', 'test']:
+    for set_name in ['train', 'val', 'test']:
         games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
-        out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
+        out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
 
         writer = NPZ.RandomizingWriter(out_dir=out_dir,
                 names=['feature_planes', 'final_scores'],
@@ -62,7 +62,7 @@ def make_KGS_eval_data():
     
         rank_allowed = lambda rank: True
 
-        komi_allowed = lambda komi: 6.5 <= float(komi) <= 7.5
+        komi_allowed = lambda komi: komi in [0.5, 5.5, 6.5, 7.5]
     
         sgfs = []
         for sub_dir in os.listdir(games_dir):
@@ -80,9 +80,31 @@ def make_KGS_eval_data():
         writer.drain()
 
 
+def komi_test():
+    games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/train"
+    sgfs = []
+    for sub_dir in os.listdir(games_dir):
+        for fn in os.listdir(os.path.join(games_dir, sub_dir)):
+            sgfs.append(os.path.join(games_dir, sub_dir, fn))
+    random.shuffle(sgfs)
+    counts = {}
+    num_games = 0
+    for sgf in sgfs:
+        reader = SGFReader(sgf)
+        print "komi =", reader.komi
+        if reader.komi in counts:
+            counts[reader.komi] += 1
+        else:
+            counts[reader.komi] = 1
+        num_games += 1
+        if num_games % 100 == 0:
+            print "counts:", counts
+
+
 
 if __name__ == '__main__':
     make_KGS_eval_data()
+    #komi_test()
 
 
 

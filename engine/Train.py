@@ -139,6 +139,26 @@ class MovingAverage:
         summary_writer.add_summary(make_summary(self.name+' (raw)', self.last_sample), step)
 
 
+"""
+def async_batch_worker(batch_queue, loader, build_feed_dict, apply_normalization):
+    while True:
+        feed_dict = build_feed_dict(loader, apply_normalization)
+        batch_queue.put(feed_dict, block=True) # will block if queue is full
+
+class BatchQueue:
+    def __init__(loader, build_feed_dict, apply_normalization, placeholder_names):
+        self.batch_queue = multiprocessing.Queue(maxsize=5)
+        self.process = multiprocessing.Process(target=async_batch_worker, args=(self.batch_queue, loader, build_feed_dict, apply_normalization))
+        self.process.daemon = True
+        self.process.start()
+    def pop_feed_dict():
+        str_feed_dict = self.batch_queue.get(block=True, timeout=5)
+        # new dict with TF placeholder variables as keys instead of strings:
+        op_feed_dict = dict((ph, str_feed_dict[placeholder_names[ph]]) for ph in placeholder_names)
+        return op_feed_dict
+"""
+
+
 def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, train_data_dir, val_data_dir, lr_base, lr_half_life, max_steps, just_validate=False):
     with tf.Graph().as_default():
         # build the graph
@@ -185,18 +205,18 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
-            #step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
-            print "NOT RESTORING FROM CHECKPOINT!!!!!"
-            print "WARNING: CHECKPOINTS TURNED OFF!!"
+            step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
+            #print "WARNING: CHECKPOINTS TURNED OFF!!"
             print "WARNING: WILL STOP AFTER %d STEPS" % max_steps
             print "WARNING: IGNORING lr.txt and momentum.txt"
             print "lr_base = %f, lr_half_life = %f" % (lr_base, lr_half_life)
-            step = 0
-            loader = NPZ.RandomizingLoader(train_data_dir, minibatch_size=128)
+            loader = NPZ.AsyncRandomizingLoader(train_data_dir, minibatch_size=128)
+            #loader = NPZ.RandomizingLoader(train_data_dir, minibatch_size=128)
             #loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
             #loader = NPZ.SplittingRandomizingLoader(train_data_dir, Nsplit=2)
+            last_step_ref_time = 0
             while True:
-                if step % 10000 == 0 and step != 0: 
+                if False: #step % 10000 == 0 and step != 0: 
                     run_validation()
 
                 start_time = time.time()
@@ -207,9 +227,9 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                     #learning_rate = read_float_from_file('../work/lr.txt', default=0.1)
                     #momentum = read_float_from_file('../work/momentum.txt', default=0.9)
                     if step < 100:
-                        learning_rate = 0.001 # to stabilize initially
+                        learning_rate = 0.0003 # to stabilize initially
                     else:
-                        learning_rate = lr_base * 0.5**(float(step)/lr_half_life)
+                        learning_rate = lr_base * 0.5**(float(step-100)/lr_half_life)
                     momentum = 0.9
                     summary_writer.add_summary(make_summary('learningrate', learning_rate), step)
                     summary_writer.add_summary(make_summary('momentum', momentum), step)
@@ -239,15 +259,18 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                     total_loss_avg.write(summary_writer, step)
                     accuracy_avg.write(summary_writer, step)
 
+                full_step_time = time.time() - last_step_ref_time
+                last_step_ref_time = time.time()
+
                 if step % 1 == 0:
                     minibatch_size = feed_dict[feature_planes].shape[0]
-                    examples_per_sec = minibatch_size / (load_time + train_time)
-                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.2f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f sec/batch)" % \
-                            (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time)
+                    examples_per_sec = minibatch_size / full_step_time
+                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.2f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f total=%0.3f sec/step)" % \
+                            (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time, full_step_time)
     
                 if step % 1000 == 0 and step != 0:
-                    print "WARNING: CHECKPOINTS TURNED OFF!!"
-                    #saver.save(sess, os.path.join(model.train_dir, "checkpoints", "model.ckpt"), global_step=step)
+                    #print "WARNING: CHECKPOINTS TURNED OFF!!"
+                    saver.save(sess, os.path.join(model.train_dir, "checkpoints", "model.ckpt"), global_step=step)
 
                 step += 1
 
@@ -256,9 +279,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
 if __name__ == "__main__":
     N = 19
     #Nfeat = 15
-    Nfeat = 21
-    #N = 2
-    #Nfeat = 1
+    #Nfeat = 21
+    Nfeat = 22
     
     """
     #model = Models.Conv6PosDep(N, Nfeat) 
@@ -282,17 +304,16 @@ if __name__ == "__main__":
     loss_func = MoveTraining.loss_func
     """
 
-    model = EvalModels.Conv5PosDepFC1ELU(N, Nfeat)
-    #model = EvalModels.Conv11PosDepFC1ELU(N, Nfeat)
+    #model = EvalModels.Conv5PosDepFC1ELU(N, Nfeat)
+    model = EvalModels.Conv11PosDepFC1ELU(N, Nfeat)
     #model = EvalModels.Zero(N, Nfeat)
     #model = EvalModels.Linear(N, Nfeat)
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
-    #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/train-tiny2"
-    #train_data_dir = "./test"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
-    normalization = Normalization.apply_featurewise_normalization_C
-    #def normalization(x): pass
-    #print "FIX THE NORMALIZATION!!!!!! PLEASE !!!! ! ! ! !!!       !!!!!! ! !!!!!!!"
+    #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
+    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/train"
+    #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
+    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/val-small"
+    #normalization = Normalization.apply_featurewise_normalization_C
+    normalization = Normalization.apply_featurewise_normalization_D
     build_feed_dict = EvalTraining.build_feed_dict
     loss_func = EvalTraining.loss_func
 
@@ -308,8 +329,13 @@ if __name__ == "__main__":
 
     print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
 
-    for lr_half_life in [1e2, 1e3, 1e4, 1e5, 1e6]:
-        max_steps = lr_half_life * 10
-        for lr_base in [0.01, 0.003, 0.001, 0.0003]:
-            train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, train_data_dir, val_data_dir, lr_base, lr_half_life, max_steps, just_validate=False)
+    #for lr_half_life in [1e2, 3e2, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6]:
+    #    max_steps = lr_half_life * 7
+    #    #for lr_base in [0.01, 0.003, 0.001, 0.0003]:
+    #    #lr_base = 0.008
+    #    lr_base = 0.002 # seems to be the highest useful learning rate for eval_conv11fc1
+    lr_base = 0.002
+    lr_half_life = 1e5 #3e4
+    max_steps = 1e9
+    train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, train_data_dir, val_data_dir, lr_base, lr_half_life, max_steps, just_validate=False)
 
