@@ -38,5 +38,4 @@ class TFEval:
         Normalization.apply_featurewise_normalization_C(board_feature_planes)
         feed_dict = {self.feature_planes: board_feature_planes.reshape(1,self.model.N,self.model.N,self.model.Nfeat)}
         score = np.asscalar(self.sess.run(self.score_op, feed_dict))
-        print "score =", score
         return score
