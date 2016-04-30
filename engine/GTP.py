@@ -145,6 +145,7 @@ class GTP:
         analyze_commands = ["string/Hello World/hello_world",
                             "dboard/Show Influence Map/show_influence_map",
                             "cboard/Show Move Probabilities/show_move_probs",
+                            "string/Toggle Kibitz Mode/toggle_kibitz_mode",
                             "string/Evaluation/get_position_eval"]
         self.tell_client("\n".join(analyze_commands))
 
@@ -168,12 +169,13 @@ class GTP:
 
     def show_move_probs(self):
         print "GTP: got show_move_probs"
-        #try:
         move_probs = self.engine.get_last_move_probs()
-        #except:
-        #    self.error_client("Not supported")
-        #    return
         self.tell_client(rgbstr_from_map(move_probs))
+
+    def toggle_kibitz_mode(self):
+        print "GTP: got toggle_kibitz_mode"
+        result = self.engine.toggle_kibitz_mode()
+        self.tell_client("In kibitz mode? %s" % result)
 
     def game_over(self):
         #exit(0)
@@ -224,6 +226,8 @@ class GTP:
                 self.show_influence_map()
             elif line.startswith("show_move_probs"):
                 self.show_move_probs()
+            elif line.startswith("toggle_kibitz_mode"):
+                self.toggle_kibitz_mode()
             elif line.startswith("get_position_eval"):
                 self.get_position_eval()
             elif line.startswith("kgs-game_over"):
@@ -240,6 +244,8 @@ class GTP:
 # Redirect stuff that would normally go to stdout
 # and stderr to a file.
 def redirect_all_output(logfile):
+    global true_stderr
+    true_stderr = sys.stderr
     fclient = sys.stdout
     logfile = "log_engine.txt"
     sys.stdout = sys.stderr = open(logfile, 'w', 0) # 0 = unbuffered

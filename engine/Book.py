@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os
 import cPickle
+import random
 from operator import xor
 from collections import defaultdict
 from Board import *
@@ -162,6 +163,36 @@ def test_book(book):
         print "best_vertex =", best_vertex
         board.play_stone(best_vertex[0], best_vertex[1], play_color)
         play_color = flipped_color[play_color]
+
+def ensure_politeness(board, xy):
+    x,y = xy
+    if np.all(board.vertices == Color.Empty):        
+        if x < board.N/2:
+            x = board.N - x - 1
+        if y < board.N/2:
+            y = board.N - y - 1
+        if y > x:
+            x,y = y,x
+    return x,y
+
+def get_book_move(board, book):
+    pos_record = lookup_position(book, board)
+    if pos_record:
+        print "known moves:"
+        best_vertex = None
+        total_count = 0
+        for vertex in pos_record.moves:
+            move_record = pos_record.moves[vertex]
+            print vertex, " - wins=", move_record.wins, "; losses=", move_record.losses
+            total_count += move_record.wins + move_record.losses
+        if True: #total_count >= 10:
+            min_count = total_count / 10
+            popular_moves = [move for move in pos_record.moves if (pos_record.moves[move].wins + pos_record.moves[move].losses > min_count)]
+            print "popular moves are", popular_moves
+            book_move = random.choice(popular_moves)
+            book_move = ensure_politeness(board, book_move)
+            return book_move
+    return None
 
 
 if __name__ == '__main__':

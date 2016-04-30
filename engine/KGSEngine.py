@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from Engine import *
 from HelperEngine import HelperEngine
 
@@ -75,3 +76,22 @@ class KGSEngine(BaseEngine):
 
     def get_last_move_probs(self):
         return self.engine.get_last_move_probs()
+
+    def toggle_kibitz_mode(self):
+        return self.engine.toggle_kibitz_mode()
+
+if __name__ == '__main__':
+    import GTP
+    fclient = GTP.redirect_all_output("log_engine.txt")
+    
+    from GTP import GTP
+    from TFEngine import TFEngine
+    import MoveModels
+    from Book import PositionRecord
+    from Book import MoveRecord
+    
+    engine = KGSEngine(TFEngine("conv12posdepELU", MoveModels.Conv12PosDepELU(N=19, Nfeat=21)))
+    
+    gtp = GTP(engine, fclient)
+    gtp.loop()
+

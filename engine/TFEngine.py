@@ -7,31 +7,9 @@ import Book
 import Features
 import Normalization
 import Symmetry
-from GTP import Move
+import Checkpoint
+from GTP import Move, true_stderr
 from Board import *
-
-#def build_feed_dict(mb_filename, feature_planes, onehot_moves):
-#    N = 9
-#    loaded_feature_planes, loaded_move_arrs = read_minibatch(mb_filename)
-#    loaded_move_indices = N * loaded_move_arrs[:,0] + loaded_move_arrs[:,1] # NEED TO CHECK ORDER
-#    assert loaded_feature_planes.shape[0] == loaded_move_indices.shape[0]
-#    minibatch_size = loaded_feature_planes.shape[0]
-#    loaded_onehot_moves = np.zeros((minibatch_size, N*N), dtype=np.float32)
-#    for i in xrange(minibatch_size): loaded_onehot_moves[i, loaded_move_indices[i]] = 1.0
-#    return { feature_planes: loaded_feature_planes.astype(np.float32),
-#             onehot_moves: loaded_onehot_moves }
-
-def restore_from_checkpoint(sess, saver, ckpt_dir):
-    print "Trying to restore from checkpoint in dir", ckpt_dir
-    ckpt = tf.train.get_checkpoint_state(ckpt_dir)
-    if ckpt and ckpt.model_checkpoint_path:
-        print "Checkpoint file is ", ckpt.model_checkpoint_path
-        saver.restore(sess, ckpt.model_checkpoint_path)
-        global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-        print "Restored from checkpoint %s" % global_step
-    else:
-        print "No checkpoint file found"
-        assert False
 
 def softmax(E, temp):
     #print "E =\n", E
@@ -46,87 +24,6 @@ def sample_from(probs):
             return i
     assert False, "problem with sample_from" 
 
-def make_symmetry_batch(features):
-    assert len(features.shape) == 3
-    #print "features[:,:,1] =\n", features[:,:,1]
-    N = features.shape[0]
-    Nfeat = features.shape[2]
-    feature_batch = np.empty((8, N, N, Nfeat), dtype=features.dtype)
-    for s in xrange(8):
-        feature_batch[s,:,:,:] = features
-        Symmetry.apply_symmetry_planes(feature_batch[s,:,:,:], s)
-        #print "feature_batch[%d,:,:,1] =\n" % s, feature_batch[s,:,:,1]
-    return feature_batch
-
-def print_plane(plane):
-    assert False
-    for y in xrange(plane.shape[0]):
-        for x in xrange(plane.shape[1]):
-            print "%7.3f" % plane[x,y],
-        print
-
-def print_planes(planes):
-    for p in xrange(planes.shape[0]):
-        print "PLANE", p
-        print_plane(planes[p,:,:])
-
-def average_logits_over_symmetries(logits, N):
-    #print "logits.shape =", logits.shape
-    assert logits.shape == (8, N*N)
-    logit_planes = logits.reshape((8, N, N))
-    #print "before inverting symmetries, logit_planes ="
-    #print_planes(logit_planes)
-    for s in xrange(8):
-        Symmetry.invert_symmetry_plane(logit_planes[s,:,:], s)
-    #print "after inverting symmetries, logit planes ="
-    #print_planes(logit_planes)
-    mean_logits = logit_planes.mean(axis=0)
-    #print "mean_logits =\n"
-    #print_plane(mean_logits)
-    mean_logits = mean_logits.reshape((N*N,))
-    return mean_logits
-
-#def do_random_symmetry(features):
-#    s = np.randint(0, 7)
-#    N = features.shape[0]
-#    Nfeat = features.shape[2]
-#    feature_batch = features.copy().reshape((1, N, N, Nfeat))
-#    Symmetry.apply_symmetry_planes(feature_batch[0,:,:,:], s)
-#    return feature_batch, s
-#
-#def revert_symmetry_logits(logits, s, N):
-#    logit_planes = logits.copy().reshape((1, N, N))
-#    Symmetry.invert_symmetry_plane(logit_planes[0,:,:], s)
-#    return logit_planes.reshape((N*N,))
-
-
-def get_book_move(board, book):
-    pos_record = Book.lookup_position(book, board)
-    if pos_record:
-        print "known moves:"
-        best_vertex = None
-        total_count = 0
-        for vertex in pos_record.moves:
-            move_record = pos_record.moves[vertex]
-            print vertex, " - wins=", move_record.wins, "; losses=", move_record.losses
-            total_count += move_record.wins + move_record.losses
-        if True: #total_count >= 10:
-            min_count = total_count / 10
-            popular_moves = [move for move in pos_record.moves if (pos_record.moves[move].wins + pos_record.moves[move].losses > min_count)]
-            print "popular moves are", popular_moves
-            return random.choice(popular_moves)
-    return None
-
-def ensure_politeness(board, xy):
-    x,y = xy
-    if np.all(board.vertices == Color.Empty):        
-        if x < board.N/2:
-            x = board.N - x - 1
-        if y < board.N/2:
-            y = board.N - y - 1
-        if y > x:
-            x,y = y,x
-    return x,y
 
 class TFEngine(BaseEngine):
     def __init__(self, eng_name, model):
@@ -134,9 +31,9 @@ class TFEngine(BaseEngine):
         self.eng_name = eng_name
         self.model = model
         self.book = Book.load_GoGoD_book()
-        #self.book = None
 
         self.last_move_probs = np.zeros((self.model.N, self.model.N,))
+        self.kibitz_mode = False
 
         # build the graph
         with tf.Graph().as_default():
@@ -148,8 +45,7 @@ class TFEngine(BaseEngine):
                 self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
                 self.sess.run(init)
                 checkpoint_dir = os.path.join(model.train_dir, 'checkpoints')
-                #checkpoint_dir = "/home/greg/coding/ML/go/NN/work/good_checkpoints/conv12posdepELU_N19_fe15"
-                restore_from_checkpoint(self.sess, saver, checkpoint_dir)
+                Checkpoint.restore_from_checkpoint(self.sess, saver, checkpoint_dir)
 
 
     def name(self):
@@ -163,19 +59,18 @@ class TFEngine(BaseEngine):
             return False
         return BaseEngine.set_board_size(self, N)
 
-    def pick_move(self, color):
-        #if self.opponent_passed: return Move.Pass # Pass if opponent passes????
-
+    def pick_book_move(self, color):
         if self.book:
-            book_move = get_book_move(self.board, self.book)
+            book_move = Book.get_book_move(self.board, self.book)
             if book_move:
                 print "playing book move", book_move
-                book_move = ensure_politeness(self.board, book_move)
                 return Move(book_move[0], book_move[1])
             print "no book move"
         else:
             print "no book"
+        return None
 
+    def pick_model_move(self, color):
         if self.model.Nfeat == 15:
             board_feature_planes = Features.make_feature_planes_stones_3liberties_4history_ko(self.board, color)
             Normalization.apply_featurewise_normalization_B(board_feature_planes)
@@ -184,22 +79,14 @@ class TFEngine(BaseEngine):
             Normalization.apply_featurewise_normalization_C(board_feature_planes)
         else:
             assert False
-        feature_batch = make_symmetry_batch(board_feature_planes)
-
-
+        feature_batch = Symmetry.make_symmetry_batch(board_feature_planes)
 
         feed_dict = {self.feature_planes: feature_batch}
 
         logit_batch = self.sess.run(self.logits, feed_dict)
-        move_logits = average_logits_over_symmetries(logit_batch, self.model.N)
+        move_logits = Symmetry.average_plane_over_symmetries(logit_batch, self.model.N)
         softmax_temp = 1.0
         move_probs = softmax(move_logits, softmax_temp)
-
-        #for y in xrange(self.model.N):
-        #    for x in xrange(self.model.N):
-        #        ind = self.model.N * x + y 
-        #        print "%7.3f" % move_logits[ind],
-        #    print
 
         # zero out illegal moves
         for x in xrange(self.model.N):
@@ -219,14 +106,32 @@ class TFEngine(BaseEngine):
         move_x = move_ind / self.model.N
         move_y = move_ind % self.model.N
 
-        move_x,move_y = ensure_politeness(self.board, (move_x, move_y))
-
         self.last_move_probs = move_probs.reshape((self.board.N, self.board.N))
 
         return Move(move_x, move_y)
 
+    def pick_move(self, color):
+        book_move = self.pick_book_move(color)
+        if book_move:
+            if self.kibitz_mode: # in kibitz mode compute model probabilities anyway
+                self.pick_model_move(color) # ignore the model move
+            return book_move
+        return self.pick_model_move(color)
+
     def get_last_move_probs(self):
         return self.last_move_probs
+
+    def stone_played(self, x, y, color):
+        # if we are in kibitz mode, we want to compute model probabilities for ALL turns
+        if self.kibitz_mode:
+            self.pick_model_move(color)
+            true_stderr.write("probability of played move %s (%d, %d) was %.2f%%\n" % (color_names[color], x, y, 100*self.last_move_probs[x,y]))
+
+        BaseEngine.stone_played(self, x, y, color)
+
+    def toggle_kibitz_mode(self):
+        self.kibitz_mode = ~self.kibitz_mode
+        return self.kibitz_mode
 
 
 

@@ -16,91 +16,6 @@ import EvalTraining
 import NPZ
 import Normalization
 
-
-def restore_from_checkpoint(sess, saver, train_dir):
-    checkpoint_dir = os.path.join(train_dir, 'checkpoints')
-    print "Trying to restore from checkpoint in dir", checkpoint_dir
-    checkpoint = tf.train.get_checkpoint_state(checkpoint_dir)
-    if checkpoint and checkpoint.model_checkpoint_path:
-        print "Checkpoint file is ", checkpoint.model_checkpoint_path
-        saver.restore(sess, checkpoint.model_checkpoint_path)
-        step = int(checkpoint.model_checkpoint_path.split('/')[-1].split('-')[-1])
-        print "Restored from checkpoint"
-
-        #ema_dir = os.path.join(train_dir, 'moving_averages')
-        #ema_checkpoint = tf.train.get_checkpoint_state(ema_dir)
-        #if ema_checkpoint and ema_checkpoint.model_checkpoint_path:
-        #    print "Moving average checkpoint file is", ema_checkpoint.model_checkpoint_path
-        #    ema_saver.restore(sess, ema_checkpoint.model_checkpoint_path)
-        #    print "Restored moving averages from checkpoint"
-        #else:
-        #    print "Failed to restore moving averages from checkpoint dir", ema_dir
-    else:
-        print "No checkpoint file found"
-        assert False
-    return step
-
-def optionally_restore_from_checkpoint(sess, saver, train_dir):
-    while True:
-        response = raw_input("Restore from checkpoint [y/n]? ").lower()
-        if response == 'y': 
-            return restore_from_checkpoint(sess, saver, train_dir)
-        if response == 'n':
-            return 0
-
-#def add_loss_summaries(total_loss, accuracy):
-#    # Compute the moving average of all individual losses and the total loss.
-#    accuracy_pct = tf.mul(accuracy, tf.constant(100.0), name='accuracy_percent')
-#    interesting_numbers = [total_loss, accuracy_pct]
-#
-#    averages = tf.train.ExponentialMovingAverage(0.99875, name='avg')
-#    averages_op = averages.apply(interesting_numbers)
-#
-#    # Attach a scalar summary to all individual losses and the total loss; do the
-#    # same for the averaged version of the losses.
-#    for l in interesting_numbers:
-#        # Name each loss as '(raw)' and name the moving average version of the loss
-#        # as the original loss name.
-#        tf.scalar_summary(l.op.name +' (raw)', l)
-#        tf.scalar_summary(l.op.name, averages.average(l))
-#
-#    # Make a Saver for the exponential moving averages
-#    ema_variables = [averages.average(op) for op in interesting_numbers]
-#    ema_saver = tf.train.Saver(ema_variables)
-#
-#    return averages_op, ema_saver
-
-#def train_step(total_loss, accuracy, learning_rate, momentum=None):
-##    loss_averages_op, ema_saver = add_loss_summaries(total_loss, accuracy)
-#
-#    # Compute gradients.
-#    #with tf.control_dependencies([loss_averages_op]):
-#    with tf.control_dependencies([loss_averages_op]):
-#        #opt = tf.train.GradientDescentOptimizer(learning_rate)
-#        #print "USING GRADIENT DESCENT"
-#        opt = tf.train.MomentumOptimizer(learning_rate, momentum)
-#        print "USING MOMENTUM"
-#        #opt = tf.train.AdamOptimizer(learning_rate)
-#
-#        grads = opt.compute_gradients(total_loss)
-#
-#    # Apply gradients.
-#    apply_gradient_op = opt.apply_gradients(grads)
-#
-#    # Add histograms for trainable variables.
-#    #for var in tf.trainable_variables():
-#    #    tf.histogram_summary(var.op.name, var)
-#
-#    # Add histograms for gradients.
-#    #for grad, var in grads:
-#    #    if grad:
-#    #        tf.histogram_summary(var.op.name + '/gradients', grad)
-#
-#    with tf.control_dependencies([apply_gradient_op]):
-#        train_op = tf.no_op(name='train')
-#
-#    return train_op #, ema_saver
-
 def train_step(total_loss, learning_rate, momentum=None):
     return tf.train.MomentumOptimizer(learning_rate, momentum).minimize(total_loss)
 
@@ -202,11 +117,10 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
         last_training_loss = None
 
         if just_validate: # Just run the validation set once
-            restore_from_checkpoint(sess, saver, model.train_dir)
+            Checkpoint.restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
-            step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
-            #print "WARNING: CHECKPOINTS TURNED OFF!!"
+            step = Checkpoint.optionally_restore_from_checkpoint(sess, saver, model.train_dir)
             print "WARNING: WILL STOP AFTER %d STEPS" % max_steps
             print "WARNING: IGNORING lr.txt and momentum.txt"
             print "lr_base = %f, lr_half_life = %f" % (lr_base, lr_half_life)

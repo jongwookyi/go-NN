@@ -64,3 +64,23 @@ def get_inverse_symmetry_vertex_tuple(vertex, N, s):
     assert 0 <= x < N
     assert 0 <= y < N
     return (x,y)
+
+def make_symmetry_batch(features):
+    assert len(features.shape) == 3
+    N = features.shape[0]
+    Nfeat = features.shape[2]
+    feature_batch = np.empty((8, N, N, Nfeat), dtype=features.dtype)
+    for s in xrange(8):
+        feature_batch[s,:,:,:] = features
+        apply_symmetry_planes(feature_batch[s,:,:,:], s)
+    return feature_batch
+
+def average_plane_over_symmetries(planes, N):
+    assert planes.shape == (8, N*N)
+    planes = planes.reshape((8, N, N))
+    for s in xrange(8):
+        invert_symmetry_plane(planes[s,:,:], s)
+    mean_plane = planes.mean(axis=0)
+    mean_plane = mean_plane.reshape((N*N,))
+    return mean_plane
+
