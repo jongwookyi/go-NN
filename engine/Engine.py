@@ -45,7 +45,7 @@ class BaseEngine(object):
         self.opponent_passed = False
 
     def set_komi(self, komi):
-        pass
+        self.komi = float(komi)
 
     def player_passed(self, color):
         self.push_state()

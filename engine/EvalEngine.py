@@ -7,6 +7,7 @@ from Board import *
 import Features
 import Normalization
 import Symmetry
+import Checkpoint
 
 def average_probs_over_symmetries(probs):
     assert probs.size == 8
@@ -34,9 +35,12 @@ class EvalEngine(BaseEngine):
                 Checkpoint.restore_from_checkpoint(self.sess, saver, checkpoint_dir)
 
     def get_position_eval(self):
-        assert self.model.Nfeat == 21
-        board_feature_planes = Features.make_feature_planes_stones_4liberties_4history_ko_4captures(self.board, self.board.color_to_play).astype(np.float32)
-        Normalization.apply_featurewise_normalization_C(board_feature_planes)
+        #assert self.model.Nfeat == 21
+        #board_feature_planes = Features.make_feature_planes_stones_4liberties_4history_ko_4captures(self.board, self.board.color_to_play).astype(np.float32)
+        #Normalization.apply_featurewise_normalization_C(board_feature_planes)
+        assert self.model.Nfeat == 22
+        board_feature_planes = Features.make_feature_planes_stones_4liberties_4history_ko_4captures_komi(self.board, self.board.color_to_play, self.komi).astype(np.float32)
+        Normalization.apply_featurewise_normalization_D(board_feature_planes)
         feature_batch = Symmetry.make_symmetry_batch(board_feature_planes)
         feed_dict = {self.feature_planes: feature_batch}
         probs_batch = self.sess.run(self.probs_op, feed_dict)
@@ -60,7 +64,7 @@ if __name__ == '__main__':
 
     import EvalModels
     
-    engine = EvalEngine(EvalModels.Conv11PosDepFC1ELU(N=19, Nfeat=21))
+    engine = EvalEngine(EvalModels.Conv11PosDepFC1ELU(N=19, Nfeat=22))
     
     gtp = GTP.GTP(engine, fclient)
     gtp.loop()

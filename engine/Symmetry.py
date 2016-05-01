@@ -1,6 +1,17 @@
 import numpy as np
 import random
 
+# in place, hopefully
+def apply_symmetry_features_example(many_planes, i, s):
+    assert len(many_planes.shape) == 4
+    if (s & 1) != 0: # flip x
+        many_planes[i,:,:,:] = many_planes[i,::-1,:,:]
+    if (s & 2) != 0: # flip y
+        many_planes[i,:,:,:] = many_planes[i,:,::-1,:]
+    if (s & 4) != 0: # swap x and y
+        many_planes[i,:,:,:] = many_planes[i,:,:,:].transpose(1, 0, 2)
+
+
 def apply_symmetry_planes(planes, s):
     assert len(planes.shape) == 3
     if (s & 1) != 0: # flip x

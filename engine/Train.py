@@ -7,6 +7,7 @@ import os
 import random
 import time
 from datetime import datetime
+import gc
 import MoveModels
 import MoveTraining
 import InfluenceModels
@@ -15,6 +16,7 @@ import EvalModels
 import EvalTraining
 import NPZ
 import Normalization
+import Checkpoint
 
 def train_step(total_loss, learning_rate, momentum=None):
     return tf.train.MomentumOptimizer(learning_rate, momentum).minimize(total_loss)
@@ -120,21 +122,27 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             Checkpoint.restore_from_checkpoint(sess, saver, model.train_dir)
             run_validation()
         else: # Run the training loop
-            step = Checkpoint.optionally_restore_from_checkpoint(sess, saver, model.train_dir)
+            #step = 0
+            step = Checkpoint.optionally_restore_from_checkpoint(sess, saver, os.path.join(model.train_dir, 'checkpoints'))
+            #step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
+            #print "WARNING: CHECKPOINTS TURNED OFF!!"
             print "WARNING: WILL STOP AFTER %d STEPS" % max_steps
             print "WARNING: IGNORING lr.txt and momentum.txt"
             print "lr_base = %f, lr_half_life = %f" % (lr_base, lr_half_life)
-            loader = NPZ.AsyncRandomizingLoader(train_data_dir, minibatch_size=128)
+            #loader = NPZ.AsyncRandomizingLoader(train_data_dir, minibatch_size=128)
+            minibatch_size = 128
+            batch_queue = EvalTraining.AsyncRandomBatchQueue(feature_planes, outputs_ph, train_data_dir, minibatch_size, normalization)
             #loader = NPZ.RandomizingLoader(train_data_dir, minibatch_size=128)
             #loader = NPZ.GroupingRandomizingLoader(train_data_dir, Ngroup=1)
             #loader = NPZ.SplittingRandomizingLoader(train_data_dir, Nsplit=2)
             last_step_ref_time = 0
             while True:
-                if False: #step % 10000 == 0 and step != 0: 
+                if step % 10000 == 0 and step != 0: 
                     run_validation()
 
                 start_time = time.time()
-                feed_dict = build_feed_dict(loader, normalization, feature_planes, outputs_ph)
+                #feed_dict = build_feed_dict(loader, normalization, feature_planes, outputs_ph)
+                feed_dict = batch_queue.next_feed_dict()
                 load_time = time.time() - start_time
 
                 if step % 1 == 0:
@@ -179,8 +187,11 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                 if step % 1 == 0:
                     minibatch_size = feed_dict[feature_planes].shape[0]
                     examples_per_sec = minibatch_size / full_step_time
-                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.2f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f total=%0.3f sec/step)" % \
+                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.4f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f total=%0.3f sec/step)" % \
                             (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time, full_step_time)
+                    if step % 10 == 0:
+                        summary_writer.add_summary(make_summary('examples/sec', examples_per_sec), step)
+                        summary_writer.add_summary(make_summary('step', step), step)
     
                 if step % 1000 == 0 and step != 0:
                     #print "WARNING: CHECKPOINTS TURNED OFF!!"
@@ -241,9 +252,12 @@ if __name__ == "__main__":
     normalization = Normalization.apply_featurewise_normalization_B
     """
 
+    #gc.set_debug(gc.DEBUG_STATS)
+
     print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
 
     #for lr_half_life in [1e2, 3e2, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6]:
+    #for lr_half_life in [1e4, 3e4, 1e5, 3e5, 1e6]:
     #    max_steps = lr_half_life * 7
     #    #for lr_base in [0.01, 0.003, 0.001, 0.0003]:
     #    #lr_base = 0.008
