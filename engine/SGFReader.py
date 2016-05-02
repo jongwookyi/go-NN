@@ -82,6 +82,7 @@ def test_SGFParser():
 
 class SGFReader:
     def __init__(self, filename):
+        self.filename = filename
         parser = SGFParser(filename)
         self.initial_stones = []
         self.moves = []

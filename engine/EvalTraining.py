@@ -88,7 +88,7 @@ class AsyncRandomBatchQueue:
         self.feature_planes_ph = feature_planes_ph
         self.final_scores_ph = final_scores_ph
     def next_feed_dict(self):
-        feed_dict_strings = self.q.get(block=True, timeout=5)
+        feed_dict_strings = self.q.get(block=True, timeout=30)
         feed_dict = dict_strings_to_ops(feed_dict_strings, self.feature_planes_ph, self.final_scores_ph)
         return feed_dict
 
