@@ -116,6 +116,19 @@ using my CPU.
 using KGS games that made it all the way to scoring. It seemed to work OK but in the end I found it much less
 interesting than the policy network.
 
+### Code
+
+The code is in the `engine/` folder. A short guide:
+
+* `MoveModels.py`: policy network architectures for move prediction. Final one used was `Conv12PosDepELU`.
+* `Training.py`: trains the network.
+* `TFEngine.py`: runs the trained network to generate moves in a game
+* `Features.py`: computes the input features for the network.
+* `SGReader.py`: an SGF file parser.
+* `GTP.py`: implementation of the Go Text Protocol.
+
+There are a lot of files related to unfinished work on a value network, an "influence" network (to predict final territory), and a tree search engine that would have combined a policy network and a value network.
+
 ### Links
 
 In addition to the GoGoD database, I also looked at these databases:
