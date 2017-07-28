@@ -1,15 +1,18 @@
 #!/usr/bin/python
 
+import colorama
 import numpy as np
+
+colorama.init()
 
 class Color:
     Empty = 0
     Black = 1
     White = 2
 
-color_names = { Color.Empty:"Empty", Color.Black:"Black", Color.White:"White", }
+color_names = {Color.Empty:"Empty", Color.Black:"Black", Color.White:"White"}
 
-flipped_color = { Color.Empty: Color.Empty, Color.Black: Color.White, Color.White: Color.Black }
+flipped_color = {Color.Empty: Color.Empty, Color.Black: Color.White, Color.White: Color.Black}
 
 dxdys = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
@@ -20,15 +23,12 @@ class Group:
         self.color = color
 
 class IllegalMoveException(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
 
 class Board:
     def __init__(self, N):
         self.N = N
-        self.clear()
-
-    def clear(self):
         self.vertices = np.empty((self.N, self.N), dtype=np.int32)
         self.vertices.fill(Color.Empty)
         self.groups = {} # dictionary from (x,y) tuples to Groups
@@ -37,6 +37,9 @@ class Board:
         self.move_list = []
         self.color_to_play = Color.Black
 
+    def clear(self):
+        self.__init__(self.N)
+
     def __getitem__(self, index):
         return self.vertices[index]
 
@@ -44,15 +47,15 @@ class Board:
         return x >= 0 and x < self.N and y >= 0 and y < self.N
 
     def adj_vertices(self, xy):
-        x,y = xy
-        for dx,dy in dxdys:
-            adj_x,adj_y = x+dx,y+dy
+        x, y = xy
+        for dx, dy in dxdys:
+            adj_x, adj_y = x + dx, y + dy
             if self.is_on_board(adj_x, adj_y):
-                yield adj_x,adj_y
+                yield adj_x, adj_y
 
     def merge_groups(self, a, b):
         if len(a.vertices) < len(b.vertices):
-            return self.merge_groups(b,a)
+            return self.merge_groups(b, a)
         assert a.color == b.color
         a.vertices.update(b.vertices)
         a.liberties.update(b.liberties)
@@ -76,7 +79,7 @@ class Board:
         if not (0 <= x < self.N and 0 <= y < self.N): return False
 
         # no playing on top of stones
-        xy = x,y
+        xy = x, y
         if self.vertices[xy] != Color.Empty: return False
 
         # simple ko
@@ -140,8 +143,9 @@ class Board:
         return True
 
     def play_stone(self, x, y, color):
-        if not self.try_play_stone(x, y, color, actually_execute=True):
-            raise IllegalMoveException("playing a %s stone at (%d,%d) is illegal" % (color_names[color], x, y))
+        # if not self.try_play_stone(x, y, color, actually_execute=True):
+        #     raise IllegalMoveException("playing a %s stone at (%d,%d) is illegal" % (color_names[color], x, y))
+        return self.try_play_stone(x, y, color, actually_execute=True)
 
     def play_is_legal(self, x, y, color):
         return self.try_play_stone(x, y, color, actually_execute=False)
@@ -152,51 +156,48 @@ class Board:
         self.move_list.append(None)
         self.color_to_play = flipped_color[self.color_to_play]
 
-    #def flip_colors(self):
-    #    for x in range(self.N):
-    #        for y in range(self.N):
-    #            self.vertices[x,y] = flipped_color[self.vertices[x,y]]
+    def flip_colors(self):
+        for x in range(self.N):
+            for y in range(self.N):
+                self.vertices[x, y] = flipped_color[self.vertices[x, y]]
 
     def show(self):
-        color_strings = { 
-                Color.Empty: '.',
-                Color.Black: '\033[31m0\033[0m',
-                Color.White: '\033[37m0\033[0m' }
-        for x in range(self.N): print "=",
-        print
+        color_strings = {Color.Empty: '.', Color.Black: '\033[31m0\033[0m', Color.White: '\033[37m0\033[0m'}
+        for x in range(self.N): print("=", end=" ")
+        print()
         for y in range(self.N):
             for x in range(self.N):
-                if (x,y) == self.simple_ko_vertex:
-                    print 'x',
+                if (x, y) == self.simple_ko_vertex:
+                    print('x', end=" ")
                 else:
-                    print color_strings[self.vertices[x,y]],
-            print
-        for x in range(self.N): print "=",
-        print
+                    print(color_strings[self.vertices[x, y]], end=" ")
+            print()
+        for x in range(self.N): print("=", end=" ")
+        print()
 
     def show_liberty_counts(self):
-        color_strings = { 
-                Color.Empty: ' .',
-                Color.Black: '\033[31m%2d\033[0m',
-                Color.White: '\033[37m%2d\033[0m' }
-        for x in range(self.N): print " =",
-        print
+        color_strings = {Color.Empty: ' .', Color.Black: '\033[31m%2d\033[0m', Color.White: '\033[37m%2d\033[0m'}
+        for x in range(self.N): print(" =", end=" ")
+        print()
         for y in range(self.N):
             for x in range(self.N):
-                s = color_strings[self.vertices[x,y]]
-                if self.vertices[x,y] != Color.Empty:
-                    s = s % len(self.groups[(x,y)].liberties)
-                print s,
-            print
-        for x in range(self.N): print " =",
-        print
+                s = color_strings[self.vertices[x, y]]
+                if self.vertices[x, y] != Color.Empty:
+                    s = s % len(self.groups[(x, y)].liberties)
+                print(s, end=" ")
+            print()
+        for x in range(self.N): print(" =", end=" ")
+        print()
 
 
 def show_sequence(board, moves, first_color):
     board.clear()
     color = first_color
-    for x,y in moves:
+    for x, y in moves:
         legal = board.play_stone(x, y, color)
+        if not legal:
+            print("Illegal move at ({0}, {1})".format(x, y))
+            # TODO Handle illegal move
         board.show()
         color = flipped_color[color]
 
@@ -204,34 +205,31 @@ def show_sequence(board, moves, first_color):
 def test_Board():
     board = Board(5)
 
-    print "simplest capture:"
+    print("simplest capture:")
     show_sequence(board, [(1, 0), (0, 0), (0, 1)], Color.Black)
-    print "move at (0, 0) is legal?", board.play_is_legal(0, 0, Color.White)
+    print("move at (0, 0) is legal?", board.play_is_legal(0, 0, Color.White))
     board.flip_colors()
 
-    print "bigger capture:"
+    print("bigger capture:")
     show_sequence(board, [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2), (0, 3), (1, 3), (0, 4), (1, 4)], Color.Black)
 
-    print "ko:"
+    print("ko:")
     show_sequence(board, [(0, 1), (3, 1), (1, 0), (2, 0), (1, 2), (2, 2), (2, 1), (1, 1)], Color.Black)
-    print "move at (2, 1) is legal?", board.play_is_legal(2, 1, Color.Black)
+    print("move at (2, 1) is legal?", board.play_is_legal(2, 1, Color.Black))
     board.show()
     board.flip_colors()
-    print "fipped board:"
+    print("fipped board:")
     board.show()
 
-    print "self capture:"
+    print("self capture:")
     show_sequence(board, [(0, 1), (1, 1), (1, 0)], Color.Black)
-    print "move at (0, 0) is legal?", board.play_is_legal(0, 0, Color.White)
+    print("move at (0, 0) is legal?", board.play_is_legal(0, 0, Color.White))
 
-    print "biffer self capture:"
+    print("biffer self capture:")
     show_sequence(board, [(1, 0), (0, 0), (1, 1), (0, 1), (1, 2), (0, 2), (1, 3), (0, 3), (1, 4)], Color.Black)
-    print "move at (0, 4) is legal?", board.play_is_legal(0, 0, Color.White)
+    print("move at (0, 4) is legal?", board.play_is_legal(0, 0, Color.White))
 
 
 
 if __name__ == "__main__":
     test_Board()
-
-
-
