@@ -51,7 +51,7 @@ def make_KGS_eval_data():
     Nfeat = 22
     feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures_komi
 
-    #for set_name in ['train', 'val', 'test']:
+    # for set_name in ['train', 'val', 'test']:
     print("WARNING: ONLY DOING VAL AND TEST SETS!")
     for set_name in ['val', 'test']:
         # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
@@ -77,7 +77,7 @@ def make_KGS_eval_data():
 
         num_games = 0
         for sgf in sgfs:
-            #print "making eval data from %s" % sgf
+            # print("making eval data from %s" % sgf)
             write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed)
             num_games += 1
             if num_games % 100 == 0: print("Finished %d games of %d" % (num_games, len(sgfs)))

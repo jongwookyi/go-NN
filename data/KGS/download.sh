@@ -8,7 +8,7 @@ wget --output-document=- http://u-go.net/gamerecords/ | grep Download | grep bz2
 
 while read url ; do
     echo "fetching $url"
-    wget "$url"    
+    wget -nc "$url"    
 done < urls.txt
 
 echo "Done fetching archive files. Extracting..."
