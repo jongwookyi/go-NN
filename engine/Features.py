@@ -6,8 +6,12 @@ import numpy as np
 from Board import *
 from SGFParser import PlayingProcessor
 
-if sys.version_info.major < 3:
-    def xrange(start, stop=None, step=1): return range(start, stop, step)
+if 2 < sys.version_info.major:
+    def xrange(start, stop=None, step=1):
+        if stop is None:
+            return range(0, start)
+        else:
+            return range(start, stop, step)
 
 def make_color_plane(array, board, color):
     np.copyto(array, np.equal(board.vertices, color))
@@ -66,10 +70,11 @@ def make_liberty_count_planes(array, board, Nplanes, play_color):
     assert array.shape[2] == Nplanes
     for group in board.all_groups:
         num_liberties = len(group.liberties)
-        if num_liberties > Nplanes/2: num_liberties = Nplanes/2
+        if num_liberties > Nplanes / 2: num_liberties = Nplanes / 2
         plane = num_liberties - 1
         if board[next(iter(group.vertices))] != play_color:
-            plane += Nplanes/2
+            plane += Nplanes / 2
+        plane = int(plane)
         for gx, gy in group.vertices:
             array[gx, gy, plane] = 1
 

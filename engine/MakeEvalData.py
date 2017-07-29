@@ -70,9 +70,11 @@ def make_KGS_eval_data():
         komi_allowed = lambda komi: komi in [0.5, 5.5, 6.5, 7.5]
 
         sgfs = []
-        for sub_dir in os.listdir(games_dir):
-            for fn in os.listdir(os.path.join(games_dir, sub_dir)):
-                sgfs.append(os.path.join(games_dir, sub_dir, fn))
+        # for sub_dir in os.listdir(games_dir):
+        #     for fn in os.listdir(os.path.join(games_dir, sub_dir)):
+        #         sgfs.append(os.path.join(games_dir, sub_dir, fn))
+        for file_name in os.listdir(games_dir):
+            sgfs.append(os.path.join(games_dir, file_name))
         random.shuffle(sgfs)
 
         num_games = 0

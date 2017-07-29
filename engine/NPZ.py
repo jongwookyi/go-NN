@@ -7,8 +7,12 @@ import time
 import sys
 import numpy as np
 
-if sys.version_info.major < 3:
-    def xrange(start, stop=None, step=1): return range(start, stop, step)
+if 2 < sys.version_info.major:
+    def xrange(start, stop=None, step=1):
+        if stop is None:
+            return range(0, start)
+        else:
+            return range(start, stop, step)
 
 class RandomizingWriter:
     def __init__(self, out_dir, names, shapes, dtypes, Nperfile, buffer_len):
