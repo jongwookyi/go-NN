@@ -1,4 +1,9 @@
 
+import os
+
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 class QueueWriter:
     def __init__(self, batch_queue, names, shapes, dtypes, minibatch_size, buffer_len):
@@ -50,25 +55,25 @@ def make_game_data_eval(sgf, writer, feature_maker, apply_normalization, rank_al
     reader = SGFReader(sgf)
 
     if not rank_allowed(reader.black_rank) or not rank_allowed(reader.white_rank):
-        print "skipping %s b/c of disallowed rank. ranks are %s, %s" % (sgf, reader.black_rank, reader.white_rank)
+        print("skipping %s b/c of disallowed rank. ranks are %s, %s" % (sgf, reader.black_rank, reader.white_rank))
         return
 
     if reader.komi == None:
-        print "skiping %s b/c there's no komi given" % sgf
+        print("skiping %s b/c there's no komi given" % sgf)
         return
     komi = float(reader.komi)
     if not komi_allowed(komi):
-        print "skipping %s b/c of non-allowed komi \"%s\"" % (sgf, reader.komi)
+        print("skipping %s b/c of non-allowed komi \"%s\"" % (sgf, reader.komi))
 
     if reader.result == None:
-        print "skipping %s because there's no result given" % sgf
+        print("skipping %s because there's no result given" % sgf)
         return
     elif "B+" in reader.result:
         winner = Color.Black
     elif "W+" in reader.result:
         winner = Color.White
     else:
-        print "skipping %s because I can't figure out the winner from \"%s\"" % (sgf, reader.result)
+        print("skipping %s because I can't figure out the winner from \"%s\"" % (sgf, reader.result))
         return
 
     while True:
@@ -104,7 +109,8 @@ def async_worker_eval(self, batch_queue, sgfs, make_game_data):
 
 class OnlineExampleQueue:
     def __init__(self, sgfs, make_example):
-        base_dir = '/home/greg/coding/ML/go/NN/data/4dKGS/SGFs/train'
+        # base_dir = '/home/greg/coding/ML/go/NN/data/4dKGS/SGFs/train'
+        base_dir = os.path.join(DATA_DIR, "4dKGS", "SGFs", "train")
         sgfs = []
         for sub_dir in os.listdir(base_dir):
             for fn in os.listdir(os.path.join(base_dir, sub_dir)):

@@ -1,9 +1,15 @@
+import os
 import tensorflow as tf
 from Layers import *
 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+
 class Conv4PosDep:
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/influence_conv4posdep_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/influence_conv4posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "influence_conv4posdep_N%d_fe%d" % (N, Nfeat))
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -19,7 +25,8 @@ class Conv4PosDep:
 
 class Conv12PosDepELU: 
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/influence_conv12posdep_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/influence_conv12posdep_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "influence_conv12posdep_N%d_fe%d" % (N, Nfeat))
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):

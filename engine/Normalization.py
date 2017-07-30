@@ -1,10 +1,14 @@
 #!/usr/bin/python
-import numpy as np
 import os
 import math
 import sys
 import math
 import random
+import numpy as np
+
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 def apply_grand_normalization(feature_planes, grand_mean, grand_rescaling_factor):
     np.copyto(feature_planes, (feature_planes - grand_mean) * grand_rescaling_factor)
@@ -121,7 +125,8 @@ def test_normalizations():
     np.set_printoptions(precision=3, linewidth=200)
 
     #npz_dir = '/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15-randomized-2'
-    npz_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train'
+    # npz_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train'
+    npz_dir = os.path.join(DATA_DIR, "GoGoD", "move_examples", "stones_4lib_4hist_ko_4cap_Nf21", "train")
     sample = get_sample(npz_dir, Nfiles=100)
 
     print("Grand normalization:")

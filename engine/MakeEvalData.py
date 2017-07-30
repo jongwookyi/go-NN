@@ -8,7 +8,9 @@ from SGFReader import SGFReader
 import Features
 import NPZ
 
-SRC_DIR = os.path.abspath(os.path.dirname(__file__))
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 def write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed):
     reader = SGFReader(sgf)
@@ -53,11 +55,12 @@ def make_KGS_eval_data():
 
     # for set_name in ['train', 'val', 'test']:
     print("WARNING: ONLY DOING VAL AND TEST SETS!")
-    for set_name in ['val', 'test']:
+    for set_name in ['train']:
+    # for set_name in ['val', 'test']:
         # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
         # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
-        games_dir = os.path.join(SRC_DIR, "..", "data", "KGS", "SGFs", set_name)
-        out_dir = os.path.join(SRC_DIR, "..", "data", "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", set_name)
+        games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", set_name)
+        out_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", set_name)
         if not os.path.exists(out_dir): os.makedirs(out_dir)
 
         writer = NPZ.RandomizingWriter(out_dir=out_dir,
@@ -90,7 +93,7 @@ def make_KGS_eval_data():
 
 def komi_test():
     # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/train"
-    games_dir = os.path.join(SRC_DIR, "..", "data", "KGS", "SGFs", "train")
+    games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", "train")
     sgfs = []
     for sub_dir in os.listdir(games_dir):
         for fn in os.listdir(os.path.join(games_dir, sub_dir)):

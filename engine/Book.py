@@ -1,6 +1,10 @@
 #!/usr/bin/python
+import functools
 import os
-import cPickle
+import sys
+# TODO Change import when using python2
+# import cPickle as pickle
+import pickle
 import random
 from operator import xor
 from collections import defaultdict
@@ -8,14 +12,26 @@ from Board import *
 from SGFReader import SGFReader
 import Symmetry
 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+
 np.random.seed(72936393)
 zobrist_keys = np.random.randint(-2**63, 2**63-1, size=(19,19,3))
 np.random.seed()
 
+if 2 < sys.version_info.major:
+    reduce = functools.reduce
+    def xrange(start, stop=None, step=1):
+        if stop is None:
+            return range(0, start)
+        else:
+            return range(start, stop, step)
+
 def key_from_board(board, s=0):
     vertices = board.vertices.copy()
     Symmetry.apply_symmetry_plane(vertices, s)
-    return reduce(xor, (zobrist_keys[x,y,vertices[x,y]] for x in xrange(board.N) for y in xrange(board.N)))
+    return reduce(xor, (zobrist_keys[x, y, vertices[x, y]] for x in xrange(board.N) for y in xrange(board.N)))
 
 class MoveRecord:
     def __init__(self):
@@ -30,7 +46,7 @@ def add_move_to_book(book, board, move, win):
     best_key = None
     for s in xrange(8):
         key_s = key_from_board(board, s)
-        if s == 0: 
+        if s == 0:
             best_key = key_s
             best_s = s
         if key_s in book:
@@ -49,18 +65,18 @@ def add_game_to_book(sgf, book, max_moves, rank_allowed):
     reader = SGFReader(sgf)
 
     if not rank_allowed(reader.black_rank) or not rank_allowed(reader.white_rank):
-        print "skipping %s because of invalid rank(s) (%s and %s)" % (sgf, reader.black_rank, reader.white_rank)
+        print("skipping %s because of invalid rank(s) (%s and %s)" % (sgf, reader.black_rank, reader.white_rank))
         return
 
-    if reader.result == None:
-        print "skipping %s because there's no result given" % sgf
+    if reader.result is None:
+        print("skipping %s because there's no result given" % sgf)
         return
     elif "B+" in reader.result:
         winner = Color.Black
     elif "W+" in reader.result:
         winner = Color.White
     else:
-        print "skipping %s because I can't figure out the winner from \"%s\"" % (sgf, reader.result)
+        print("skipping %s because I can't figure out the winner from \"%s\"" % (sgf, reader.result))
         return
 
     moves_played = 0
@@ -84,7 +100,7 @@ def lookup_position(book, board):
         if key_s in book:
             key = key_s
             break
-    if key == None: 
+    if key is None:
         return None
 
     pos_record = book[key]
@@ -100,23 +116,24 @@ def make_book_from_GoGoD():
     max_moves = 20
     #rank_allowed = lambda rank: rank in ['1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d']
     rank_allowed = lambda rank: True
-    
+
     num_games = 0
-    top_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/modern_games'
+    # top_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/modern_games'
+    top_dir = os.path.join(DATA_DIR, "GoGoD", "modern_games")
     for sub_dir in os.listdir(top_dir):
         for fn in os.listdir(os.path.join(top_dir, sub_dir)):
             sgf = os.path.join(top_dir, sub_dir, fn)
-            #print "reading sgf %s" % sgf
+            # print("reading sgf %s" % sgf)
             add_game_to_book(sgf, book, max_moves, rank_allowed)
             num_games += 1
             if num_games % 100 == 0:
-                print "finished %d games..." % num_games
-            #if num_games >= 10000:
-             #   return book
+                print("finished %d games..." % num_games)
+            # if num_games >= 10000:
+            #     return book
     return book
 
 def prune_book(book, min_games):
-    print "prune_book: initially len(book) = %d" % len(book)
+    print("prune_book: initially len(book) = %d" % len(book))
     keys = book.keys()
     num_positions_deleted = 0
     for key in keys:
@@ -124,20 +141,22 @@ def prune_book(book, min_games):
         if num_games < min_games:
             del book[key]
             num_positions_deleted += 1
-    print "prune_book deleted %d positions" % num_positions_deleted
-    print "prune_book: now len(book) = %d" % len(book)
+    print("prune_book deleted %d positions" % num_positions_deleted)
+    print("prune_book: now len(book) = %d" % len(book))
 
 def write_GoGoD_book():
     book = make_book_from_GoGoD()
     prune_book(book, min_games=2)
-    print "Writing GoGoD book with %d positions." % len(book)
-    with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'w') as f:
-        cPickle.dump(book, f)
+    print("Writing GoGoD book with %d positions." % len(book))
+    # with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'w') as f:
+    with open(os.path.join(SRC_DIR, "GoGoDBook.bin"), 'w') as f:
+        pickle.dump(book, f)
 
 def load_GoGoD_book():
-    with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'r') as f:
-        book = cPickle.load(f)
-    print "Loaded GoGoD book with %d positions." % len(book)
+    # with open('/home/greg/coding/ML/go/NN/engine/GoGoDBook.bin', 'r') as f:
+    with open(os.path.join(SRC_DIR, "GoGoDBook.bin"), 'r') as f:
+        book = pickle.load(f)
+    print("Loaded GoGoD book with %d positions." % len(book))
     return book
 
 def test_book(book):
@@ -148,47 +167,47 @@ def test_book(book):
         board.show()
         pos_record = lookup_position(book, board)
         if pos_record == None:
-            print "book line ends"
+            print("book line ends")
             break
-        print "known moves:"
+        print("known moves:")
         best_vertex = None
         best_count = 0
         for vertex in pos_record.moves:
             move_record = pos_record.moves[vertex]
-            print vertex, " - wins=", move_record.wins, "; losses=", move_record.losses
+            print(vertex, " - wins=", move_record.wins, "; losses=", move_record.losses)
             count = move_record.wins + move_record.losses
             if count > best_count:
                 best_count = count
                 best_vertex = vertex
-        print "best_vertex =", best_vertex
+        print("best_vertex =", best_vertex)
         board.play_stone(best_vertex[0], best_vertex[1], play_color)
         play_color = flipped_color[play_color]
 
 def ensure_politeness(board, xy):
-    x,y = xy
-    if np.all(board.vertices == Color.Empty):        
+    x, y = xy
+    if np.all(board.vertices == Color.Empty):
         if x < board.N/2:
             x = board.N - x - 1
         if y < board.N/2:
             y = board.N - y - 1
         if y > x:
-            x,y = y,x
-    return x,y
+            x, y = y, x
+    return x, y
 
 def get_book_move(board, book):
     pos_record = lookup_position(book, board)
     if pos_record:
-        print "known moves:"
+        print("known moves:")
         best_vertex = None
         total_count = 0
         for vertex in pos_record.moves:
             move_record = pos_record.moves[vertex]
-            print vertex, " - wins=", move_record.wins, "; losses=", move_record.losses
+            print(vertex, " - wins=", move_record.wins, "; losses=", move_record.losses)
             total_count += move_record.wins + move_record.losses
         if True: #total_count >= 10:
             min_count = total_count / 10
             popular_moves = [move for move in pos_record.moves if (pos_record.moves[move].wins + pos_record.moves[move].losses > min_count)]
-            print "popular moves are", popular_moves
+            print("popular moves are", popular_moves)
             book_move = random.choice(popular_moves)
             book_move = ensure_politeness(board, book_move)
             return book_move
@@ -201,10 +220,3 @@ if __name__ == '__main__':
     write_GoGoD_book()
     book = load_GoGoD_book()
     test_book(book)
-
-
-
-
-
-    
-

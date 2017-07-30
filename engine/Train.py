@@ -18,6 +18,10 @@ import Checkpoint
 # import InfluenceModels
 # import InfluenceTraining
 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+
 def train_step(total_loss, learning_rate, momentum=None):
     return tf.train.MomentumOptimizer(learning_rate, momentum).minimize(total_loss)
 
@@ -93,7 +97,8 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
         sess.run(init)
 
-        summary_writer = tf.train.SummaryWriter(os.path.join(model.train_dir, 'summaries', datetime.now().strftime('%Y%m%d-%H%M%S')), graph=sess.graph, flush_secs=5)
+        # summary_writer = tf.train.SummaryWriter(os.path.join(model.train_dir, 'summaries', datetime.now().strftime('%Y%m%d-%H%M%S')), graph=sess.graph, flush_secs=5)
+        summary_writer = tf.summary.FileWriter(os.path.join(model.train_dir, 'summaries', datetime.now().strftime('%Y%m%d-%H%M%S')), graph=sess.graph, flush_secs=5)
         accuracy_avg = MovingAverage('accuracy', time_constant=1000)
         total_loss_avg = MovingAverage('total_loss', time_constant=1000)
 
@@ -207,50 +212,52 @@ if __name__ == "__main__":
     #Nfeat = 21
     Nfeat = 22
 
-    """
-    #model = Models.Conv6PosDep(N, Nfeat)
-    #model = Models.Conv8PosDep(N, Nfeat)
-    #model = Models.Conv10PosDep(N, Nfeat)
-    #model = MoveModels.Conv10PosDepELU(N, Nfeat)
-    #model = MoveModels.Conv12PosDepELU(N, Nfeat)
-    model = MoveModels.Conv12PosDepELUBig(N, Nfeat)
-    #model = MoveModels.Conv16PosDepELU(N, Nfeat)
-    #model = MoveModels.Res5x2PreELU(N, Nfeat)
-    #model = MoveModels.Res10x2PreELU(N, Nfeat)
-    #model = MoveModels.Conv4PosDepELU(N, Nfeat)
-    #model = Models.FirstMoveTest(N, Nfeat)
-    #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
-    #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
-    #normalization = Normalization.apply_featurewise_normalization_B
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
-    normalization = Normalization.apply_featurewise_normalization_C
-    build_feed_dict = MoveTraining.build_feed_dict
-    loss_func = MoveTraining.loss_func
-    """
+    # """
+    # #model = Models.Conv6PosDep(N, Nfeat)
+    # #model = Models.Conv8PosDep(N, Nfeat)
+    # #model = Models.Conv10PosDep(N, Nfeat)
+    # #model = MoveModels.Conv10PosDepELU(N, Nfeat)
+    # #model = MoveModels.Conv12PosDepELU(N, Nfeat)
+    # model = MoveModels.Conv12PosDepELUBig(N, Nfeat)
+    # #model = MoveModels.Conv16PosDepELU(N, Nfeat)
+    # #model = MoveModels.Res5x2PreELU(N, Nfeat)
+    # #model = MoveModels.Res10x2PreELU(N, Nfeat)
+    # #model = MoveModels.Conv4PosDepELU(N, Nfeat)
+    # #model = Models.FirstMoveTest(N, Nfeat)
+    # #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
+    # #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
+    # #normalization = Normalization.apply_featurewise_normalization_B
+    # train_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
+    # val_data_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
+    # normalization = Normalization.apply_featurewise_normalization_C
+    # build_feed_dict = MoveTraining.build_feed_dict
+    # loss_func = MoveTraining.loss_func
+    # """
 
     #model = EvalModels.Conv5PosDepFC1ELU(N, Nfeat)
     model = EvalModels.Conv11PosDepFC1ELU(N, Nfeat)
     #model = EvalModels.Zero(N, Nfeat)
     #model = EvalModels.Linear(N, Nfeat)
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/train"
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/train"
+    # train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/train"
+    train_data_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", "train")
     #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_Nf21/val-small"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/val-small"
+    # val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/val-small"
+    val_data_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", "val")
     #normalization = Normalization.apply_featurewise_normalization_C
     normalization = Normalization.apply_featurewise_normalization_D
     build_feed_dict = EvalTraining.build_feed_dict
     loss_func = EvalTraining.loss_func
 
-    """
-    #model = InfluenceModels.Conv4PosDep(N, Nfeat)
-    model = InfluenceModels.Conv12PosDepELU(N, Nfeat)
-    train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/influence/examples/stones_3lib_4hist_ko_Nf15/train"
-    val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/influence/examples/stones_3lib_4hist_ko_Nf15/val"
-    build_feed_dict = InfluenceTraining.build_feed_dict
-    loss_func = InfluenceTraining.loss_func
-    normalization = Normalization.apply_featurewise_normalization_B
-    """
+    # """
+    # #model = InfluenceModels.Conv4PosDep(N, Nfeat)
+    # model = InfluenceModels.Conv12PosDepELU(N, Nfeat)
+    # train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/influence/examples/stones_3lib_4hist_ko_Nf15/train"
+    # val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/influence/examples/stones_3lib_4hist_ko_Nf15/val"
+    # build_feed_dict = InfluenceTraining.build_feed_dict
+    # loss_func = InfluenceTraining.loss_func
+    # normalization = Normalization.apply_featurewise_normalization_B
+    # """
 
     #gc.set_debug(gc.DEBUG_STATS)
 

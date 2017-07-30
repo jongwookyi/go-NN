@@ -1,9 +1,15 @@
+import os
 import tensorflow as tf
 from Layers import *
 
-class Conv5PosDepFC1ELU: 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+
+class Conv5PosDepFC1ELU:
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/eval_conv5posdepfc1ELU_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/eval_conv5posdepfc1ELU_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "eval_conv5posdepfc1ELU_N%d_fe%d" % (N, Nfeat))
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -26,9 +32,10 @@ class Conv5PosDepFC1ELU:
         score = tf.tanh(linear_layer(fc, Nfc, 1))
         return score
 
-class Conv11PosDepFC1ELU: 
+class Conv11PosDepFC1ELU:
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/eval_conv11posdepfc1ELU_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/eval_conv11posdepfc1ELU_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "eval_conv11posdepfc1ELU_N%d_fe%d" % (N, Nfeat))
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -53,7 +60,8 @@ class Conv11PosDepFC1ELU:
 
 class Linear:
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/linear_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/linear_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "linear_N%d_fe%d" % (N, Nfeat))
         self.N = N
         self.Nfeat = Nfeat
     def inference(self, feature_planes, N, Nfeat):
@@ -68,7 +76,8 @@ class Linear:
 
 class Zero:
     def __init__(self, N, Nfeat):
-        self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/zero_N%d_fe%d" % (N, Nfeat)
+        # self.train_dir = "/home/greg/coding/ML/go/NN/work/train_dirs/zero_N%d_fe%d" % (N, Nfeat)
+        self.train_dir = os.path.join(PROJECT_DIR, "work", "train_dirs", "zero_N%d_fe%d" % (N, Nfeat))
     def inference(self, feature_planes, N, Nfeat):
         dummy = tf.Variable(tf.constant(0.0, dtype=tf.float32), name='dummy')
         return dummy * tf.constant(0.0, dtype=tf.float32, shape=[128])

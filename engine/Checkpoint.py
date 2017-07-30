@@ -1,4 +1,9 @@
+import sys
 import tensorflow as tf
+
+if 2 < sys.version_info.major:
+    def raw_input(prompt):
+        return input(prompt)
 
 def restore_from_checkpoint(sess, saver, ckpt_dir):
     print("Trying to restore from checkpoint in dir", ckpt_dir)
@@ -16,8 +21,7 @@ def restore_from_checkpoint(sess, saver, ckpt_dir):
 def optionally_restore_from_checkpoint(sess, saver, train_dir):
     while True:
         response = raw_input("Restore from checkpoint [y/n]? ").lower()
-        if response == 'y': 
+        if response == 'y':
             return restore_from_checkpoint(sess, saver, train_dir)
         if response == 'n':
             return 0
-

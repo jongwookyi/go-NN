@@ -10,36 +10,47 @@ from Board import *
 import Features
 import NPZ
 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+
+if 2 < sys.version_info.major:
+    def xrange(start, stop=None, step=1):
+        if stop is None:
+            return range(0, start)
+        else:
+            return range(start, stop, step)
+
 def make_move_arr(x, y):
     return np.array([x,y], dtype=np.int8)
 
 def show_plane(array):
     assert len(array.shape) == 2
     N = array.shape[0]
-    print "=" * N
+    print("=" * N)
     for y in xrange(N):
         for x in xrange(N):
             sys.stdout.write('1' if array[x,y]==1 else '0')
         sys.stdout.write('\n')
-    print "=" * array.shape[1]
+    print("=" * array.shape[1])
 
 def show_all_planes(array):
     assert len(array.shape) == 3
     for i in xrange(array.shape[2]):
-        print "PLANE %d:" % i
+        print("PLANE %d:" % i)
         show_plane(array[:,:,i])
 
 def show_feature_planes_and_move(feature_planes, move):
-    print "FEATURE PLANES:"
+    print("FEATURE PLANES:")
     show_all_planes(feature_planes)
-    print "MOVE:"
-    print move
+    print("MOVE:")
+    print(move)
 
 def show_batch(all_feature_planes, all_moves):
     batch_size = all_feature_planes.shape[0]
-    print "MINIBATCH OF SIZE", batch_size
+    print("MINIBATCH OF SIZE", batch_size)
     for i in xrange(batch_size):
-        print "EXAMPLE", i
+        print("EXAMPLE", i)
         show_feature_planes_and_move(all_feature_planes[i,:,:,:], all_moves[i,:])
 
 def test_feature_planes():
@@ -51,7 +62,7 @@ def test_feature_planes():
         feature_planes = make_feature_planes(board, play_color)
         move_arr = make_move_arr(x, y)
         show_feature_planes_and_move(feature_planes, move_arr)
-        print
+        print()
         board.play_stone(x, y, play_color)
         play_color = flipped_color[play_color]
 
@@ -61,12 +72,12 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed):
     color_is_good = { Color.Black: rank_allowed(reader.black_rank),
                       Color.White: rank_allowed(reader.white_rank) }
     if (not color_is_good[Color.White]) and (not color_is_good[Color.Black]):
-        print "skipping game b/c of disallowed rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank)
+        print("skipping game b/c of disallowed rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank))
         return
     elif not color_is_good[Color.White]:
-        print "ignoring white because of rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank)
+        print("ignoring white because of rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank))
     elif not color_is_good[Color.Black]:
-        print "ignoring black because of rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank)
+        print("ignoring black because of rank. ranks are B=%s, W=%s" % (reader.black_rank, reader.white_rank))
 
     try:
         while reader.has_more():
@@ -80,10 +91,10 @@ def write_game_data(sgf, writer, feature_maker, rank_allowed):
                 else:
                     raise IllegalMoveException("playing a %s stone at (%d,%d) is illegal" % (color_names[color], x, y))
             reader.play_next_move()
-    except IllegalMoveException, e:
-        print "Aborting b/c of illegal move!"
-        print "sgf causing exception is %s" % sgf
-        print e
+    except IllegalMoveException as e:
+        print("Aborting b/c of illegal move!")
+        print("sgf causing exception is %s" % sgf)
+        print(e)
         exit(-1)
 
 def make_move_prediction_data(sgf_list, N, Nfeat, out_dir, feature_maker, rank_allowed):
@@ -98,10 +109,10 @@ def make_move_prediction_data(sgf_list, N, Nfeat, out_dir, feature_maker, rank_a
 
     num_games = 0
     for sgf in sgf_list:
-        print "processing %s" % sgf
+        print("processing %s" % sgf)
         write_game_data(sgf, writer, feature_maker, rank_allowed)
         num_games += 1
-        if num_games % 100 == 0: print "num_games =", num_games
+        if num_games % 100 == 0: print("num_games =", num_games)
     writer.drain()
 
 def make_KGS_move_data():
@@ -112,9 +123,11 @@ def make_KGS_move_data():
                                          '1p', '2p', '3p', '4p', '5p', '6p', '7p', '8p', '9p', '10p', '11p']
 
     for set_name in ['train', 'val', 'test']:
-        base_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
+        # base_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
+        base_dir = os.path.join(DATA_DIR, "KGS", "SGFs", set_name)
         sgfs = [os.path.join(base_dir, sub_dir, fn) for sub_dir in os.listdir(base_dir) for fn in os.listdir(os.path.join(base_dir, sub_dir))]
-        out_dir = "/home/greg/coding/ML/go/NN/data/KGS/move_examples/6dan_stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
+        # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/move_examples/6dan_stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
+        out_dir = os.path.join(DATA_DIR, "KGS", "move_examples", "6dan_stones_4lib_4hist_ko_4cap_Nf21", set_name)
 
         make_move_prediction_data(sgfs, N, Nfeat, out_dir, feature_maker, rank_allowed)
 
@@ -125,12 +138,15 @@ def make_GoGoD_move_data():
     rank_allowed = lambda rank: rank in [ '1d', '2d', '3d', '4d', '5d', '6d', '7d', '8d', '9d', '10d', '11d' ]
 
     for set_name in ['train', 'val', 'test']:
-        with open('/home/greg/coding/ML/go/NN/data/GoGoD/bad_sgfs/bad_sgfs.txt', 'r') as f:
+        # with open('/home/greg/coding/ML/go/NN/data/GoGoD/bad_sgfs/bad_sgfs.txt', 'r') as f:
+        with open(os.path.join(DATA_DIR, "GoGoD", "bad_sgfs", "bad_sgfs.txt"), 'r') as f:
             excluded_sgfs = [line.strip() for line in f.readlines()]
-            print "excluded_sgfs =\n", excluded_sgfs
-        base_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/sets/%s" % set_name
+            print("excluded_sgfs =\n", excluded_sgfs)
+        # base_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/sets/%s" % set_name
+        base_dir = os.path.join(DATA_DIR, "GoGoD", "sets", set_name)
         sgfs = [os.path.join(base_dir, sub_dir, fn) for sub_dir in os.listdir(base_dir) for fn in os.listdir(os.path.join(base_dir, sub_dir)) if fn not in excluded_sgfs]
-        out_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
+        # out_dir = "/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/%s" % set_name
+        out_dir =  os.path.join(DATA_DIR, "GoGoD", "move_examples", "stones_4lib_4hist_ko_4cap_Nf21", set_name)
         make_move_prediction_data(sgfs, N, Nfeat, out_dir, feature_maker, rank_allowed)
 
         

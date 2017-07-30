@@ -1,6 +1,10 @@
 #!/usr/bin/python
-
+import os
 from Board import *
+
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(SRC_DIR, "..")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 READING_NAME = 1
 READING_DATA = 2
@@ -112,7 +116,8 @@ class SGFParser:
 
 def test_SGFParser():
     #sgf = "../data/KGS/SGFs/KGS2001/2000-10-10-1.sgf"
-    sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/modern_games/2007/2007-08-21g.sgf"
+    # sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/modern_games/2007/2007-08-21g.sgf"
+    sgf = os.path.join(DATA_DIR, "GoGoD", "modern_games", "2007", "2007-08-21g.sgf")
     parser = SGFParser(sgf)
     for property_name, property_data in parser:
         print("\"%s\" = \"%s\"" % (property_name, property_data))
@@ -189,7 +194,8 @@ class SGFReader:
 
 def test_SGFReader():
     #sgf = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/kgs-19-2008-02-new/2008-02-09-18.sgf"
-    sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/sets/train/1995/1995-07-01c.sgf"
+    # sgf = "/home/greg/coding/ML/go/NN/data/GoGoD/sets/train/1995/1995-07-01c.sgf"
+    sgf = os.path.join(DATA_DIR, "GoGoD", "sets", "train", "1995", "1995-07-01c.sgf")
     reader = SGFReader(sgf)
 
     print("initial position:")
