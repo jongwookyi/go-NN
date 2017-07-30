@@ -58,6 +58,7 @@ def make_KGS_eval_data():
         # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
         games_dir = os.path.join(SRC_DIR, "..", "data", "KGS", "SGFs", set_name)
         out_dir = os.path.join(SRC_DIR, "..", "data", "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", set_name)
+        if not os.path.exists(out_dir): os.makedirs(out_dir)
 
         writer = NPZ.RandomizingWriter(out_dir=out_dir,
                                        names=['feature_planes', 'final_scores'],

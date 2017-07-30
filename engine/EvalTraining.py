@@ -30,18 +30,18 @@ def build_feed_dict(loader, apply_normalization, feature_planes, final_scores):
     apply_normalization(loaded_feature_planes)
     e = time.time()
 
-    #print "WARNING: NOT APPLYING SYMMETRIES!!!!!!!!!!!!!!!!"
+    # print("WARNING: NOT APPLYING SYMMETRIES!!!!!!!!!!!!!!!!")
     apply_random_symmetries(loaded_feature_planes)
     f = time.time()
 
-    print "b-a = %f, c-b = %f, d-c = %f, e-d = %f, f-e = %f" % ((b-a,c-b,d-c,e-d,f-e))
+    print("b-a = %f, c-b = %f, d-c = %f, e-d = %f, f-e = %f" % ((b-a,c-b,d-c,e-d,f-e)))
 
     #N = loaded_feature_planes.shape[1]
 
-    #print "loaded_feature_planes ="
-    #print loaded_feature_planes
-    #print "loaded_scores ="
-    #print loaded_scores
+    # print("loaded_feature_planes =")
+    # print(loaded_feature_planes)
+    # print("loaded_scores =")
+    # print(loaded_scores)
 
     return { feature_planes: loaded_feature_planes,
              final_scores: loaded_scores }
@@ -59,7 +59,7 @@ def build_feed_dict_strings(loader, apply_normalization):
     d = time.time()
     apply_random_symmetries(loaded_feature_planes)
     e = time.time()
-    print "b-a=%f, c-b=%f, d-c=%f, e-d=%f" % (b-a, c-b, d-c, e-d)
+    print("b-a=%f, c-b=%f, d-c=%f, e-d=%f" % (b-a, c-b, d-c, e-d))
     return { 'feature_planes': loaded_feature_planes,
              'final_scores': loaded_scores }
 
@@ -71,7 +71,7 @@ def build_feed_dict(loader, apply_normalization, feature_planes_ph, final_scores
     return dict_strings_to_ops(build_feed_dict_strings(loader, apply_normalization), feature_planes_ph, final_scores_ph)
 
 def async_worker(q, npz_dir, minibatch_size, apply_normalization):
-    print "Hello from EvalTraining async_worker process!!!"
+    print("Hello from EvalTraining async_worker process!!!")
     gc.set_debug(gc.DEBUG_STATS)
     loader = NPZ.RandomizingLoader(npz_dir, minibatch_size)
     names = ('feature_planes', 'final_scores')

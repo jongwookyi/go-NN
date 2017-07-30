@@ -49,7 +49,7 @@ def get_svd_normalized_features(feature_planes, feature_means, whitening_matrix)
 
 
 def get_sample(npz_dir, Nfiles):
-    print "getting sample data from", npz_dir
+    print("getting sample data from", npz_dir)
     filenames = os.listdir(npz_dir)[:Nfiles]
     random.shuffle(filenames)
 
@@ -70,7 +70,7 @@ def get_sample(npz_dir, Nfiles):
     for i in xrange(len(feature_batches)):
         big_matrix[i*Nperfile*N*N:(i+1)*Nperfile*N*N, :] = feature_batches[i].reshape(Nperfile*N*N, Nfeat)
 
-    print "got %d samples from %d files" % (big_matrix.shape[0], Nfiles)
+    print("got %d samples from %d files" % (big_matrix.shape[0], Nfiles))
     return big_matrix
 
 
@@ -78,18 +78,18 @@ def compute_grand_normalization(sample):
     grand_mean = sample.mean()
     grand_variance = np.square(sample).mean() - grand_mean**2
     grand_rescaling_factor = 1/math.sqrt(grand_variance)
-    print "grand_mean =", grand_mean
-    print "grand_variance =", grand_variance
-    print "grand_resaling_factor =", grand_rescaling_factor
+    print("grand_mean =", grand_mean)
+    print("grand_variance =", grand_variance)
+    print("grand_resaling_factor =", grand_rescaling_factor)
 
 
 def compute_featurewise_normalization(sample):
     feature_means = sample.mean(axis=0)
     feature_variances = np.square(sample).mean(axis=0) - np.square(feature_means)
     feature_rescaling_factors = np.reciprocal(np.sqrt(feature_variances))
-    print "feature_means =\n", repr(feature_means)
-    print "feature_variances =\n", repr(feature_variances)
-    print "feature_rescaling_factors = \n", repr(feature_rescaling_factors)
+    print("feature_means =\n", repr(feature_means))
+    print("feature_variances =\n", repr(feature_variances))
+    print("feature_rescaling_factors = \n", repr(feature_rescaling_factors))
 
 def compute_svd_normalization(samples, Ndiscard, max_rescale):
     # S is list of singular values in descending order
@@ -99,23 +99,23 @@ def compute_svd_normalization(samples, Ndiscard, max_rescale):
     Nsamp = samples.shape[0]
     component_stddevs = S / math.sqrt(Nsamp)
 
-    print "singular values ="
-    print S
-    print "component standard deviations ="
-    print component_stddevs
-    print "V matrix ="
-    print V
+    print("singular values =")
+    print(S)
+    print("component standard deviations =")
+    print(component_stddevs)
+    print("V matrix =")
+    print(V)
 
     Nfeat = samples.shape[1]
     rescaling_factors = np.minimum(np.reciprocal(component_stddevs[:Nfeat-Ndiscard]), max_rescale)
     whitening_matrix = np.dot(V[:Nfeat-Ndiscard].T, np.diag(rescaling_factors))
 
-    print "Ndiscard =", Ndiscard
-    print "max_rescale =", max_rescale
-    print "rescaling_factors ="
-    print rescaling_factors
-    print "whitening_matrix ="
-    print repr(whitening_matrix)
+    print("Ndiscard =", Ndiscard)
+    print("max_rescale =", max_rescale)
+    print("rescaling_factors =")
+    print(rescaling_factors)
+    print("whitening_matrix =")
+    print(repr(whitening_matrix))
 
 def test_normalizations():
     np.set_printoptions(precision=3, linewidth=200)
@@ -124,37 +124,37 @@ def test_normalizations():
     npz_dir = '/home/greg/coding/ML/go/NN/data/GoGoD/move_examples/stones_4lib_4hist_ko_4cap_Nf21/train'
     sample = get_sample(npz_dir, Nfiles=100)
 
-    print "Grand normalization:"
+    print("Grand normalization:")
     compute_grand_normalization(sample)
-    print
+    print()
     grand_mean = 0.15368
     grand_rescaling_factor = 2.77283290021
-    print "after grand normalization with mean = %f, rescaling factor = %f:" % (grand_mean, grand_rescaling_factor)
+    print("after grand normalization with mean = %f, rescaling factor = %f:" % (grand_mean, grand_rescaling_factor))
     norm_sample = sample.copy()
     apply_grand_normalization(norm_sample, grand_mean, grand_rescaling_factor)
     compute_grand_normalization(norm_sample)
-    print
-    print
+    print()
+    print()
 
-    print "Feature-wise normalization:"
+    print("Feature-wise normalization:")
     compute_featurewise_normalization(sample)
-    print
+    print()
     feature_means = np.array([1.463e-01, 1.478e-01, 7.058e-01, 1.000e+00, 4.529e-03, 1.809e-02, 1.237e-01, 4.053e-03, 1.774e-02, 1.260e-01, 2.758e-03, 2.749e-03, 2.738e-03, 2.729e-03, 6.471e-05])
     feature_rescaling_factors = np.array([2.829, 2.818, 2.195, 1, 14.893, 7.504, 3.037, 15.739, 7.576, 3.013, 19.067, 19.098, 19.136, 19.17, 124.319])
-    print "after grand normalization with feature_means ="
-    print feature_means
-    print "and feature_rescaling_factors ="
-    print feature_rescaling_factors
-    print
+    print("after grand normalization with feature_means =")
+    print(feature_means)
+    print("and feature_rescaling_factors =")
+    print(feature_rescaling_factors)
+    print()
     norm_sample = sample.copy()
     apply_featurewise_normalization(norm_sample, feature_means, feature_rescaling_factors)
     compute_featurewise_normalization(norm_sample)
-    print
-    print
+    print()
+    print()
 
-    print "SVD normalization:"
+    print("SVD normalization:")
     compute_svd_normalization(sample, Ndiscard=4, max_rescale=10)
-    print
+    print()
     feature_means = np.array([1.463e-01, 1.478e-01, 7.058e-01, 1.000e+00, 4.529e-03, 1.809e-02, 1.237e-01, 4.053e-03, 1.774e-02, 1.260e-01, 2.758e-03, 2.749e-03, 2.738e-03, 2.729e-03, 6.471e-05])
     whitening_matrix = np.array(
       [[  4.896e-01,   8.627e-01,  -5.059e-01,  -9.773e-01,  -8.486e-01,   6.300e-01,  -2.864e-03,   3.666e-02,   3.972e-02,   1.383e-01,  -2.034e-03],
@@ -172,10 +172,10 @@ def test_normalizations():
        [  9.400e-03,  -1.551e-02,  -1.295e-02,   2.930e-02,   6.547e-04,  -7.986e-02,   4.197e+00,   1.352e-01,   5.059e+00,   3.663e-01,   3.062e-06],
        [  8.786e-03,   1.554e-02,  -2.185e-02,  -3.086e-02,  -3.281e-02,   2.604e-02,  -1.526e-01,   4.352e+00,   3.682e-01,  -4.929e+00,   1.587e-01],
        [ -9.069e-05,   9.252e-07,   4.431e-05,  -6.060e-05,  -2.149e-04,   2.737e-04,  -2.505e-03,   7.133e-02,   6.509e-03,  -8.740e-02,  -9.258e+00]])
-    print "after SVD normalization with feature means ="
-    print feature_means
-    print "and whitening matrix ="
-    print whitening_matrix
+    print("after SVD normalization with feature means =")
+    print(feature_means)
+    print("and whitening matrix =")
+    print(whitening_matrix)
     norm_sample = get_svd_normalized_features(sample, feature_means, whitening_matrix)
     compute_svd_normalization(norm_sample, Ndiscard=0, max_rescale=999999)
 

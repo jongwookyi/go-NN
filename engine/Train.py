@@ -1,22 +1,22 @@
 #!/usr/bin/python
 
-import tensorflow as tf
-from tensorflow.core.framework import summary_pb2
-import numpy as np
 import os
-import random
 import time
 from datetime import datetime
-import gc
-import MoveModels
-import MoveTraining
-import InfluenceModels
-import InfluenceTraining
+# import random
+# import gc
+import numpy as np
+import tensorflow as tf
+from tensorflow.core.framework import summary_pb2
 import EvalModels
 import EvalTraining
 import NPZ
 import Normalization
 import Checkpoint
+# import MoveModels
+# import MoveTraining
+# import InfluenceModels
+# import InfluenceTraining
 
 def train_step(total_loss, learning_rate, momentum=None):
     return tf.train.MomentumOptimizer(learning_rate, momentum).minimize(total_loss)
@@ -25,12 +25,12 @@ def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
 
 def read_float_from_file(filename, default):
-    try: 
+    try:
         with open(filename, 'r') as f:
             x = float(f.read().strip())
             return x
     except:
-        print "failed to read from file", filename, "; using default value", default
+        print("failed to read from file", filename, "; using default value", default)
         return default
 
 def append_line_to_file(filename, s):
@@ -102,9 +102,9 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             mean_loss = 0.0
             mean_accuracy = 0.0
             mb_num = 0
-            print "Starting validation..."
+            print("Starting validation...")
             while val_loader.has_more():
-                if mb_num % 100 == 0: print "validation minibatch #%d" % mb_num
+                if mb_num % 100 == 0: print("validation minibatch #%d" % mb_num)
                 feed_dict = build_feed_dict(val_loader, normalization, feature_planes, outputs_ph)
                 loss_value, accuracy_value = sess.run([total_loss, accuracy], feed_dict=feed_dict)
                 mean_loss += loss_value
@@ -112,10 +112,10 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                 mb_num += 1
             mean_loss /= mb_num
             mean_accuracy /= mb_num
-            print "Validation: mean loss = %.3f, mean accuracy = %.2f%%" % (mean_loss, 100*mean_accuracy)
+            print("Validation: mean loss = %.3f, mean accuracy = %.2f%%" % (mean_loss, 100*mean_accuracy))
             summary_writer.add_summary(make_summary('validation_loss', mean_loss), step)
             summary_writer.add_summary(make_summary('validation_accuracy_percent', 100*mean_accuracy), step)
-    
+
         last_training_loss = None
 
         if just_validate: # Just run the validation set once
@@ -125,10 +125,10 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             #step = 0
             step = Checkpoint.optionally_restore_from_checkpoint(sess, saver, os.path.join(model.train_dir, 'checkpoints'))
             #step = optionally_restore_from_checkpoint(sess, saver, model.train_dir)
-            #print "WARNING: CHECKPOINTS TURNED OFF!!"
-            print "WARNING: WILL STOP AFTER %d STEPS" % max_steps
-            print "WARNING: IGNORING lr.txt and momentum.txt"
-            print "lr_base = %f, lr_half_life = %f" % (lr_base, lr_half_life)
+            # print("WARNING: CHECKPOINTS TURNED OFF!!")
+            print("WARNING: WILL STOP AFTER %d STEPS" % max_steps)
+            print("WARNING: IGNORING lr.txt and momentum.txt")
+            print("lr_base = %f, lr_half_life = %f" % (lr_base, lr_half_life))
             #loader = NPZ.AsyncRandomizingLoader(train_data_dir, minibatch_size=128)
             minibatch_size = 128
             batch_queue = EvalTraining.AsyncRandomBatchQueue(feature_planes, outputs_ph, train_data_dir, minibatch_size, normalization)
@@ -137,7 +137,7 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
             #loader = NPZ.SplittingRandomizingLoader(train_data_dir, Nsplit=2)
             last_step_ref_time = 0
             while True:
-                if step % 10000 == 0 and step != 0: 
+                if step % 10000 == 0 and step != 0:
                     run_validation()
 
                 start_time = time.time()
@@ -157,24 +157,24 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                     summary_writer.add_summary(make_summary('momentum', momentum), step)
                 feed_dict[learning_rate_ph] = learning_rate
                 feed_dict[momentum_ph] = momentum
-    
+
                 start_time = time.time()
                 _, loss_value, accuracy_value, outputs_value = sess.run([train_op, total_loss, accuracy, model_outputs], feed_dict=feed_dict)
                 train_time = time.time() - start_time
 
                 total_loss_avg.add(loss_value)
                 accuracy_avg.add(100 * accuracy_value)
-                #print "outputs_value ="
-                #print outputs_value.flatten()
-                #print "feed_dict[outputs_ph] ="
-                #print feed_dict[outputs_ph].flatten()
+                # print("outputs_value =")
+                # print(outputs_value.flatten())
+                # print("feed_dict[outputs_ph] =")
+                # print(feed_dict[outputs_ph].flatten())
 
                 if np.isnan(loss_value):
-                    print "Model diverged with loss = Nan"
+                    print("Model diverged with loss = Nan")
                     return
                 #assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-                if step >= max_steps: 
+                if step >= max_steps:
                     return
 
                 if step % 10 == 0:
@@ -187,14 +187,14 @@ def train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, trai
                 if step % 1 == 0:
                     minibatch_size = feed_dict[feature_planes].shape[0]
                     examples_per_sec = minibatch_size / full_step_time
-                    print "%s: step %d, lr=%.6f, mom=%.2f, loss = %.4f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f total=%0.3f sec/step)" % \
-                            (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time, full_step_time)
+                    print("%s: step %d, lr=%.6f, mom=%.2f, loss = %.4f, accuracy = %.2f%% (mb_size=%d, %.1f examples/sec), (load=%.3f train=%.3f total=%0.3f sec/step)" % \
+                            (datetime.now(), step, learning_rate, momentum, loss_value, 100*accuracy_value, minibatch_size, examples_per_sec, load_time, train_time, full_step_time))
                     if step % 10 == 0:
                         summary_writer.add_summary(make_summary('examples/sec', examples_per_sec), step)
                         summary_writer.add_summary(make_summary('step', step), step)
-    
+
                 if step % 1000 == 0 and step != 0:
-                    #print "WARNING: CHECKPOINTS TURNED OFF!!"
+                    # print("WARNING: CHECKPOINTS TURNED OFF!!")
                     saver.save(sess, os.path.join(model.train_dir, "checkpoints", "model.ckpt"), global_step=step)
 
                 step += 1
@@ -206,19 +206,19 @@ if __name__ == "__main__":
     #Nfeat = 15
     #Nfeat = 21
     Nfeat = 22
-    
+
     """
-    #model = Models.Conv6PosDep(N, Nfeat) 
-    #model = Models.Conv8PosDep(N, Nfeat) 
-    #model = Models.Conv10PosDep(N, Nfeat) 
-    #model = MoveModels.Conv10PosDepELU(N, Nfeat) 
-    #model = MoveModels.Conv12PosDepELU(N, Nfeat) 
-    model = MoveModels.Conv12PosDepELUBig(N, Nfeat) 
-    #model = MoveModels.Conv16PosDepELU(N, Nfeat) 
-    #model = MoveModels.Res5x2PreELU(N, Nfeat) 
-    #model = MoveModels.Res10x2PreELU(N, Nfeat) 
-    #model = MoveModels.Conv4PosDepELU(N, Nfeat) 
-    #model = Models.FirstMoveTest(N, Nfeat) 
+    #model = Models.Conv6PosDep(N, Nfeat)
+    #model = Models.Conv8PosDep(N, Nfeat)
+    #model = Models.Conv10PosDep(N, Nfeat)
+    #model = MoveModels.Conv10PosDepELU(N, Nfeat)
+    #model = MoveModels.Conv12PosDepELU(N, Nfeat)
+    model = MoveModels.Conv12PosDepELUBig(N, Nfeat)
+    #model = MoveModels.Conv16PosDepELU(N, Nfeat)
+    #model = MoveModels.Res5x2PreELU(N, Nfeat)
+    #model = MoveModels.Res10x2PreELU(N, Nfeat)
+    #model = MoveModels.Conv4PosDepELU(N, Nfeat)
+    #model = Models.FirstMoveTest(N, Nfeat)
     #train_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/train-rand-2"
     #val_data_dir = "/home/greg/coding/ML/go/NN/data/KGS/processed/stones_3lib_4hist_ko_Nf15/val-small"
     #normalization = Normalization.apply_featurewise_normalization_B
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     #gc.set_debug(gc.DEBUG_STATS)
 
-    print "Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir)
+    print("Training data = %s\nValidation data = %s" % (train_data_dir, val_data_dir))
 
     #for lr_half_life in [1e2, 3e2, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6]:
     #for lr_half_life in [1e4, 3e4, 1e5, 3e5, 1e6]:
@@ -266,4 +266,3 @@ if __name__ == "__main__":
     lr_half_life = 1e5 #3e4
     max_steps = 1e9
     train_model(model, N, Nfeat, build_feed_dict, normalization, loss_func, train_data_dir, val_data_dir, lr_base, lr_half_life, max_steps, just_validate=False)
-
