@@ -15,7 +15,7 @@ rm -rf val ; mkdir val
 rm -rf test ; mkdir test
 
 file_list=sgf_list.txt
-find $PWD -type f | grep ".sgf" | shuf > "$file_list"
+find $PWD -type f | grep '\.sgf' | shuf > "$file_list"
 
 num_total=$(wc -l < "$file_list")
 num_val=$(($num_total / 10))
