@@ -71,7 +71,7 @@ def build_feed_dict(loader, apply_normalization, feature_planes_ph, final_scores
     return dict_strings_to_ops(build_feed_dict_strings(loader, apply_normalization), feature_planes_ph, final_scores_ph)
 
 def async_worker(q, npz_dir, minibatch_size, apply_normalization):
-    print("Hello from EvalTraining async_worker process!!! npz_dir=", npz_dir)
+    print("Hello from EvalTraining async_worker process!!!")
     gc.set_debug(gc.DEBUG_STATS)
     loader = NPZ.RandomizingLoader(npz_dir, minibatch_size)
     names = ('feature_planes', 'final_scores')

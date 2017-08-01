@@ -95,7 +95,7 @@ class RandomizingLoader:
         # print("loading more examples...")
         if not self.filename_queue:
             self.filename_queue = [os.path.join(self.npz_dir, f) for f in os.listdir(self.npz_dir)]
-            print("self.filename_queue=", self.filename_queue)
+            # print("self.filename_queue=", self.filename_queue)
             random.shuffle(self.filename_queue)
             print("RandomizingLoader: built new filename queue with length", len(self.filename_queue))
         examples = read_npz(self.filename_queue.pop(), names)
