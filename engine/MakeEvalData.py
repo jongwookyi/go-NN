@@ -54,45 +54,48 @@ def make_KGS_eval_data():
     feature_maker = Features.make_feature_planes_stones_4liberties_4history_ko_4captures_komi
 
     # for set_name in ['train', 'val', 'test']:
-    print("WARNING: ONLY DOING VAL AND TEST SETS!")
-    for set_name in ['val', 'test']:
-        # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
-        # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
-        games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", set_name)
-        out_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", set_name)
-        if not os.path.exists(out_dir): os.makedirs(out_dir)
+    # print("WARNING: ONLY DOING VAL AND TEST SETS!")
+    # for set_name in ['val', 'test']:
+    # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
+    # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
+    # games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", set_name)
+    # out_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22", set_name)
+    games_dir = os.path.join(DATA_DIR, "KGS", "SGFs")
+    out_dir = os.path.join(DATA_DIR, "KGS", "eval_examples", "stones_4lib_4hist_ko_4cap_komi_Nf22")
+    if not os.path.exists(out_dir): os.makedirs(out_dir)
 
-        writer = NPZ.RandomizingWriter(out_dir=out_dir,
-                                       names=['feature_planes', 'final_scores'],
-                                       shapes=[(N, N, Nfeat), (1,)],
-                                       dtypes=[np.int8, np.int8],
-                                       Nperfile=128, buffer_len=50000)
+    writer = NPZ.RandomizingWriter(out_dir=out_dir,
+                                   names=['feature_planes', 'final_scores'],
+                                   shapes=[(N, N, Nfeat), (1,)],
+                                   dtypes=[np.int8, np.int8],
+                                   Nperfile=128, buffer_len=50000)
 
-        rank_allowed = lambda rank: True
+    rank_allowed = lambda rank: True
 
-        komi_allowed = lambda komi: komi in [0.5, 5.5, 6.5, 7.5]
+    komi_allowed = lambda komi: komi in [0.5, 5.5, 6.5, 7.5]
 
-        sgfs = []
-        # for sub_dir in os.listdir(games_dir):
-        #     for fn in os.listdir(os.path.join(games_dir, sub_dir)):
-        #         sgfs.append(os.path.join(games_dir, sub_dir, fn))
-        for file_name in os.listdir(games_dir):
-            sgfs.append(os.path.join(games_dir, file_name))
-        random.shuffle(sgfs)
+    sgfs = []
+    for sub_dir in os.listdir(games_dir):
+        for file_name in os.listdir(os.path.join(games_dir, sub_dir)):
+            sgfs.append(os.path.join(games_dir, sub_dir, file_name))
+    # for file_name in os.listdir(games_dir):
+    #     sgfs.append(os.path.join(games_dir, file_name))
+    random.shuffle(sgfs)
 
-        num_games = 0
-        for sgf in sgfs:
-            # print("making eval data from %s" % sgf)
-            write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed)
-            num_games += 1
-            if num_games % 100 == 0: print("Finished %d games of %d" % (num_games, len(sgfs)))
+    num_games = 0
+    for sgf in sgfs:
+        # print("making eval data from %s" % sgf)
+        write_game_data(sgf, writer, feature_maker, rank_allowed, komi_allowed)
+        num_games += 1
+        if num_games % 100 == 0: print("Finished %d games of %d" % (num_games, len(sgfs)))
 
-        writer.drain()
+    writer.drain()
 
 
 def komi_test():
     # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/train"
-    games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", "train")
+    # games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", "train")
+    games_dir = os.path.join(DATA_DIR, "KGS", "SGFs")
     sgfs = []
     for sub_dir in os.listdir(games_dir):
         for fn in os.listdir(os.path.join(games_dir, sub_dir)):
