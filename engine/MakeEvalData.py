@@ -55,8 +55,7 @@ def make_KGS_eval_data():
 
     # for set_name in ['train', 'val', 'test']:
     print("WARNING: ONLY DOING VAL AND TEST SETS!")
-    for set_name in ['train']:
-    # for set_name in ['val', 'test']:
+    for set_name in ['val', 'test']:
         # games_dir = "/home/greg/coding/ML/go/NN/data/KGS/SGFs/%s" % set_name
         # out_dir = "/home/greg/coding/ML/go/NN/data/KGS/eval_examples/stones_4lib_4hist_ko_4cap_komi_Nf22/%s" % set_name
         games_dir = os.path.join(DATA_DIR, "KGS", "SGFs", set_name)
