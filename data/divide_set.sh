@@ -10,11 +10,11 @@ cd "$dir"
 
 echo "Going to divide $dir into training, validation, and test sets."
 
-tmp_list=/tmp/npz_list.txt
+file_list=./npz_list.txt
 
-ls | grep '.npz' | shuf > "$tmp_list"
+ls | grep '\.npz' | shuf > "$file_list"
 
-num_mb=$(wc -l < "$tmp_list")
+num_mb=$(wc -l < "$file_list")
 num_val=$(($num_mb / 10))
 num_test=$(($num_mb / 10))
 num_train=$(($num_mb - $num_val - $num_test))
@@ -28,14 +28,14 @@ mkdir -p train
 mkdir -p val
 mkdir -p test
 
-head "-$num_val" "$tmp_list" | while read fn ; do
-  mv "$fn" val
+head "-$num_val" "$file_list" | while read file_name ; do
+  mv "$file_name" val
 done
 
-tail "-$num_test" "$tmp_list" | while read fn ; do
-  mv "$fn" test
+tail "-$num_test" "$file_list" | while read file_name ; do
+  mv "$file_name" test
 done
 
-mv *.npz train
+find . -name "*.npz" -exec mv {} train \;
 
 echo "Done."
